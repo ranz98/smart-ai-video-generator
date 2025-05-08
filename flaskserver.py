@@ -19,29 +19,42 @@ client = OpenAI(
     base_url="https://api.deepseek.com"
 )
 
-# System message with prompt generation instructions
-SYSTEM_MESSAGE = """
-You are a YouTube Shorts video creator assistant. Your task is to generate exactly 5 high-quality image generation prompts based on a given topic.
+# System messages
+PROMPT_GENERATION_SYSTEM = """
+You are a YouTube Shorts video creator assistant. Your task is to generate high-quality image generation prompts based on a given topic.
 
 Rules for prompts:
 1. Each prompt must describe a vivid, cinematic scene that is ideal for AI image generation.
-2. Use rich, descriptive language that captures specific visual elements—such as clothing, background setting, mood, lighting, props, and composition.
+2. Use rich, descriptive language that captures specific visual elements.
 3. Each prompt should be self-contained and between 10 words long.
-4. Prompts must be diverse, representing different scenes, perspectives, or key moments related to the topic.
-5. Begin each prompt with a visually striking hook to immediately draw the viewer in.
-6. Use a storytelling tone—each prompt should feel like a snapshot from a powerful movie or historical drama.
+4. Prompts must be diverse, representing different scenes or key moments.
+5. Begin each prompt with a visually striking hook.
 
-Output format requirements:
-- Return ONLY a JSON array with exactly 5 prompt strings
-- Do not include any additional text or explanations
-- Do not number the prompts
+Return ONLY a JSON array with prompt strings.
 """
 
-def ai_generate(prompt):
+SCRIPT_GENERATION_SYSTEM = """
+You are a YouTube Shorts script writer. Create engaging, concise scripts for short videos.
+
+Rules:
+1. Keep it under 60 seconds (100-150 words max)
+2. Start with a strong hook (first 3 seconds)
+3. Use simple, conversational language
+4. Include clear section transitions
+5. End with a call-to-action (like, follow, etc.)
+6. Structure: Hook -> 3 main points -> Conclusion
+
+Format:
+[Opening Hook]
+[Main Content - 3 key points]
+[Closing & CTA]
+"""
+
+def ai_generate(prompt, system_message):
     response = client.chat.completions.create(
         model="deepseek-chat",
         messages=[
-            {"role": "system", "content": SYSTEM_MESSAGE},
+            {"role": "system", "content": system_message},
             {"role": "user", "content": prompt}
         ],
         stream=False
@@ -51,10 +64,8 @@ def ai_generate(prompt):
 def extract_json_array(text):
     """Extract JSON array from potentially malformed text response"""
     try:
-        # Try direct JSON parsing first
         return json.loads(text)
     except json.JSONDecodeError:
-        # Fallback: Extract array content between [ and ]
         match = re.search(r'\[.*\]', text, re.DOTALL)
         if match:
             try:
@@ -70,7 +81,6 @@ def generate_prompts():
     num_prompts = data.get('num_prompts', 5)
 
     if DEMO_MODE == 1:
-        # Demo data
         prompts = [
             "A breathtaking view of Niagara Falls from the Canadian side with rainbow in the mist",
             "Angel Falls in Venezuela cascading down the tabletop mountain",
@@ -80,14 +90,8 @@ def generate_prompts():
         ]
     else:
         try:
-            prompt = f"""
-            Generate exactly {num_prompts} about: {topic}
-
-            
-            Return ONLY a JSON array with the prompt strings.
-            """
-            
-            response = ai_generate(prompt)
+            prompt = f"Generate exactly {num_prompts} image prompts about: {topic}"
+            response = ai_generate(prompt, PROMPT_GENERATION_SYSTEM)
             prompts = extract_json_array(response)
             
             if not prompts or len(prompts) != num_prompts:
@@ -101,6 +105,41 @@ def generate_prompts():
             }), 500
 
     return jsonify({'prompts': prompts})
+
+@app.route('/generate-script', methods=['POST'])
+def generate_script():
+    data = request.get_json()
+    topic = data.get('video_idea', '')
+
+    if DEMO_MODE == 1:
+        script = f"""DEMO SCRIPT: {topic}
+
+[Opening Hook]
+Did you know these amazing facts about {topic}? Stick around to see them all!
+
+[Main Content]
+1. First amazing fact with visual demonstration
+2. Second incredible detail you won't believe
+3. The most surprising aspect that changes everything
+
+[Closing & CTA]
+Which fact surprised you most? Like and follow for more amazing content!"""
+    else:
+        try:
+            prompt = f"Create a YouTube Shorts script about: {topic}"
+            script = ai_generate(prompt, SCRIPT_GENERATION_SYSTEM)
+            
+            if not script or len(script) < 20:
+                raise ValueError("Script generation failed")
+                
+        except Exception as e:
+            print(f"Error generating script: {str(e)}")
+            return jsonify({
+                'error': 'Failed to generate script',
+                'details': str(e)
+            }), 500
+
+    return jsonify({'script': script})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

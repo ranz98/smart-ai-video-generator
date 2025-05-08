@@ -135,9 +135,10 @@
             color: var(--text-secondary);
         }
 
+        /* Image grid styles - 6 columns */
         .image-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: repeat(6, 1fr);
             gap: 15px;
             margin-top: 20px;
         }
@@ -201,36 +202,83 @@
             cursor: pointer;
         }
 
-        .download-all-btn {
-            margin-top: 20px;
+        /* Demo mode toggle */
+        .demo-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
         }
 
-        @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
-        }
-
-        .creating-video {
-            animation: pulse 1.5s infinite;
-        }
-        
-        .prompt-item {
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 5px;
-            padding: 10px;
-            margin-bottom: 10px;
+        .toggle-switch {
             position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
         }
-        
-        .regenerate-prompt {
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
             position: absolute;
-            right: 10px;
-            top: 10px;
-            background: none;
-            border: none;
-            color: var(--accent-color);
             cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(30px);
+        }
+
+        /* Script section */
+        .script-container {
+            background-color: var(--card-dark);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .script-text {
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+
+        /* Wider prompts container */
+        .col-lg-8 {
+            flex: 0 0 80%;
+            max-width: 80%;
+        }
+
+        .col-lg-4 {
+            flex: 0 0 20%;
+            max-width: 20%;
         }
     </style>
 </head>
@@ -248,9 +296,6 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#"><i class="fas fa-history me-1"></i> History</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#"><i class="fas fa-cog me-1"></i> Settings</a>
-                    </li>
                 </ul>
             </div>
         </div>
@@ -260,6 +305,14 @@
         <div class="main-container">
             <div class="row">
                 <div class="col-lg-8">
+                    <div class="demo-toggle">
+                        <span>Demo Mode:</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="demoModeToggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
                     <div class="prompt-card p-4 mb-4">
                         <h5 class="mb-3"><i class="fas fa-lightbulb me-2"></i>Video Idea</h5>
                         <textarea class="form-control prompt-textarea mb-3" id="videoIdea" placeholder="Enter your YouTube Shorts video idea (e.g., '5 beautiful waterfalls around the world')"></textarea>
@@ -268,8 +321,15 @@
                                 <i class="fas fa-question-circle me-1"></i> Show Example
                             </button>
                             <button class="btn btn-generate" id="generatePromptsBtn">
-                                <i class="fas fa-bolt me-2"></i> Generate Prompts
+                                <i class="fas fa-bolt me-2"></i> Generate Prompts & Script
                             </button>
+                        </div>
+                    </div>
+
+                    <div id="scriptSection" style="display: none;">
+                        <h5 class="text-white mb-3"><i class="fas fa-scroll me-2"></i>Generated Script</h5>
+                        <div class="script-container">
+                            <pre class="script-text" id="scriptText"></pre>
                         </div>
                     </div>
 
@@ -326,40 +386,9 @@
                         <div class="mb-3">
                             <label for="aspectRatioSelect" class="form-label">Aspect Ratio</label>
                             <select class="form-select" id="aspectRatioSelect">
-                                <option value="768*1344" selected>768×1344 (Shorts Vertical)</option>
-                                <option value="1344*768">1344×768 (Landscape)</option>
+                                <option value="704*1408" selected>704×1408 (Shorts Vertical)</option>
+                                <option value="768*1344">768×1344 (Landscape)</option>
                                 <option value="1024*1024">1024×1024 (Square)</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="transitionSelect" class="form-label">Transition Style</label>
-                            <select class="form-select" id="transitionSelect">
-                                <option value="fade" selected>Fade</option>
-                                <option value="slide">Slide</option>
-                                <option value="zoom">Zoom</option>
-                                <option value="none">None</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="settings-card p-4">
-                        <h5 class="mb-3"><i class="fas fa-music me-2"></i>Audio Options</h5>
-                        <div class="mb-3">
-                            <label for="musicSelect" class="form-label">Background Music</label>
-                            <select class="form-select" id="musicSelect">
-                                <option value="upbeat" selected>Upbeat</option>
-                                <option value="calm">Calm</option>
-                                <option value="electronic">Electronic</option>
-                                <option value="none">No Music</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="voiceoverSelect" class="form-label">Voiceover</label>
-                            <select class="form-select" id="voiceoverSelect">
-                                <option value="male" selected>Male Voice</option>
-                                <option value="female">Female Voice</option>
-                                <option value="none">No Voiceover</option>
                             </select>
                         </div>
                     </div>
@@ -386,7 +415,10 @@
             const createVideoBtn = document.getElementById('createVideoBtn');
             const exampleBtn = document.getElementById('exampleBtn');
             const arrangeBtn = document.getElementById('arrangeBtn');
+            const demoModeToggle = document.getElementById('demoModeToggle');
             const promptsSection = document.getElementById('promptsSection');
+            const scriptSection = document.getElementById('scriptSection');
+            const scriptText = document.getElementById('scriptText');
             const imagesSection = document.getElementById('imagesSection');
             const promptsContainer = document.getElementById('promptsContainer');
             const imageGrid = document.getElementById('imageGrid');
@@ -395,7 +427,8 @@
             const aspectRatioSelect = document.getElementById('aspectRatioSelect');
 
             // API Endpoints
-            const PROMPT_GENERATION_API = 'http://127.0.0.1:8888/v1/generation/generate-prompts';
+            const PROMPT_GENERATION_API = 'http://localhost:5000/generate-prompts';
+            const SCRIPT_GENERATION_API = 'http://localhost:5000/generate-script';
             const IMAGE_GENERATION_API = 'http://127.0.0.1:8888/v1/generation/text-to-image';
 
             // Example button
@@ -403,9 +436,10 @@
                 videoIdea.value = "5 most beautiful waterfalls in the world";
             });
 
-            // Generate prompts button
+            // Generate prompts and script button
             generatePromptsBtn.addEventListener('click', async function() {
                 const idea = videoIdea.value.trim();
+                const isDemoMode = demoModeToggle.checked;
                 
                 if (!idea) {
                     alert("Please enter a video idea");
@@ -417,58 +451,80 @@
                 generatePromptsBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Generating...';
                 
                 try {
-                    // Call the prompt generation API
-                    const response = await fetch(PROMPT_GENERATION_API, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            video_idea: idea,
-                            num_prompts: 5
-                        })
-                    });
+                    let prompts = [];
+                    let script = "";
                     
-                    if (!response.ok) {
-                        throw new Error(`API request failed with status ${response.status}`);
+                    if (isDemoMode) {
+                        // Use demo data
+                        prompts = [
+                            "A breathtaking view of Niagara Falls from the Canadian side with rainbow in the mist",
+                            "Angel Falls in Venezuela cascading down the tabletop mountain",
+                            "Iguazu Falls with its hundreds of cascades surrounded by lush rainforest",
+                            "Victoria Falls with its massive curtain of water creating a permanent rainbow",
+                            "Plitvice Lakes waterfalls in Croatia with their turquoise waters and lush surroundings"
+                        ];
+                        script = "Demo script:\n\n1. Introduction to the world's most beautiful waterfalls\n2. Showcase each waterfall with interesting facts\n3. Closing thoughts and call to action";
+                    } else {
+                        // Call APIs for real data
+                        const [promptsResponse, scriptResponse] = await Promise.all([
+                            fetch(PROMPT_GENERATION_API, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    video_idea: idea,
+                                    num_prompts: 5
+                                })
+                            }),
+                            fetch(SCRIPT_GENERATION_API, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    video_idea: idea
+                                })
+                            })
+                        ]);
+                        
+                        if (!promptsResponse.ok || !scriptResponse.ok) {
+                            throw new Error("Failed to fetch data from API");
+                        }
+                        
+                        const promptsData = await promptsResponse.json();
+                        const scriptData = await scriptResponse.json();
+                        
+                        prompts = promptsData.prompts || [];
+                    
+                        script = scriptData.script || "";
                     }
-                    
-                    const data = await response.json();
-                    const prompts = data.prompts || [];
                     
                     if (prompts.length === 0) {
                         throw new Error("No prompts were generated");
                     }
                     
-                    // Display prompts
+                    // Display prompts and script
                     displayPrompts(prompts);
+                    scriptText.textContent = script;
                     
-                    // Show prompts section
+                    // Show sections
                     promptsSection.style.display = 'block';
+                    scriptSection.style.display = 'block';
                     
                 } catch (error) {
-                    console.error('Error generating prompts:', error);
-                    alert("Failed to generate prompts. Using example prompts instead.");
-                    
-                    // Fallback to example prompts
-                    const examplePrompts = [
-                        "A breathtaking view of Niagara Falls from the Canadian side with rainbow in the mist",
-                        "Angel Falls in Venezuela cascading down the tabletop mountain",
-                        "Iguazu Falls with its hundreds of cascades surrounded by lush rainforest",
-                        "Victoria Falls with its massive curtain of water creating a permanent rainbow",
-                        "Plitvice Lakes waterfalls in Croatia with their turquoise waters and lush surroundings"
-                    ];
-                    displayPrompts(examplePrompts);
-                    promptsSection.style.display = 'block';
+                    console.error('Error generating content:', error);
+                    alert(error.message || "Failed to generate content");
                 } finally {
                     // Reset button
                     generatePromptsBtn.disabled = false;
-                    generatePromptsBtn.innerHTML = '<i class="fas fa-bolt me-2"></i> Generate Prompts';
+                    generatePromptsBtn.innerHTML = '<i class="fas fa-bolt me-2"></i> Generate Prompts & Script';
                 }
             });
 
             // Generate images button
             generateImagesBtn.addEventListener('click', async function() {
+                const isDemoMode = demoModeToggle.checked;
                 // Get all prompts
                 const promptElements = document.querySelectorAll('.prompt-item');
                 const prompts = Array.from(promptElements).map(el => el.querySelector('.prompt-text').textContent.trim());
@@ -506,7 +562,7 @@
                 
                 // Generate images in parallel
                 const generationPromises = prompts.map((prompt, index) => 
-                    generateImage(prompt, index)
+                    generateImage(prompt, index, isDemoMode)
                 );
                 
                 try {
@@ -553,9 +609,6 @@
                     return;
                 }
                 
-                // In a real implementation, you would send these to your video creation API
-                console.log("Creating video with images:", images);
-                
                 // Simulate video creation
                 setTimeout(() => {
                     alert("Video created successfully! (This would export a video file in a real implementation)");
@@ -580,7 +633,7 @@
                 promptsContainer.innerHTML = '';
                 prompts.forEach((prompt, index) => {
                     const div = document.createElement('div');
-                    div.className = 'prompt-item mb-2 p-2';
+                    div.className = 'prompt-item';
                     div.innerHTML = `
                         <span class="prompt-text">${index + 1}. ${prompt}</span>
                         <button class="regenerate-prompt" data-index="${index}" title="Regenerate this prompt">
@@ -602,32 +655,42 @@
                 
                 const promptItem = document.querySelectorAll('.prompt-item')[index];
                 const regenerateBtn = promptItem.querySelector('.regenerate-prompt');
+                const isDemoMode = demoModeToggle.checked;
                 
                 // Show loading
                 regenerateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 
                 try {
-                    // Call API to regenerate a single prompt
-                    const response = await fetch(PROMPT_GENERATION_API, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            video_idea: idea,
-                            num_prompts: 1
-                        })
-                    });
+                    let newPrompt = "";
                     
-                    if (!response.ok) {
-                        throw new Error(`API request failed with status ${response.status}`);
+                    if (isDemoMode) {
+                        // Use demo prompt
+                        newPrompt = "New demo prompt showing a different angle of the location";
+                    } else {
+                        // Call API to regenerate a single prompt
+                        const response = await fetch(PROMPT_GENERATION_API, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                video_idea: idea,
+                                num_prompts: 1
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`API request failed with status ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        newPrompt = data.prompts?.[0] || "New prompt could not be generated";
                     }
                     
-                    const data = await response.json();
-                    const newPrompt = data.prompts?.[0] || "New prompt could not be generated";
-                    
-                    // Update the prompt
-                    promptItem.querySelector('.prompt-text').textContent = `${index + 1}. ${newPrompt}`;
+                    // Update the prompt text while preserving the number
+                    const promptText = promptItem.querySelector('.prompt-text');
+                    const prefix = promptText.textContent.split('.')[0] + '.';
+                    promptText.textContent = `${prefix} ${newPrompt}`;
                     
                 } catch (error) {
                     console.error('Error regenerating prompt:', error);
@@ -638,7 +701,7 @@
                 }
             }
 
-            async function generateImage(prompt, index) {
+            async function generateImage(prompt, index, isDemoMode) {
                 const containers = document.querySelectorAll('.image-container');
                 const container = containers[index];
                 const img = container.querySelector('img');
@@ -648,42 +711,42 @@
                 placeholder.innerHTML = '<i class="fas fa-spinner fa-spin"></i><small>Generating...</small>';
                 
                 try {
-                    // Generate a random filename
-                    const timestamp = new Date().getTime();
-                    const randomString = Math.random().toString(36).substring(2, 8);
-                    const filename = `generated-${timestamp}-${randomString}`;
-                    
-                    // Call the image generation API
-                    const response = await fetch(IMAGE_GENERATION_API, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            prompt: prompt,
-                            style_selections: [styleSelect.value],
-                            performance_selection: performanceSelect.value,
-                            aspect_ratios_selection: aspectRatioSelect.value,
-                            save_name: filename
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`API request failed with status ${response.status}`);
+                    if (isDemoMode) {
+                        // Use demo image
+                        img.src = `https://source.unsplash.com/random/768x1344/?${encodeURIComponent(prompt.split(' ')[0])}`;
+                    } else {
+                        // Generate a random filename
+                        const timestamp = new Date().getTime();
+                        const randomString = Math.random().toString(36).substring(2, 8);
+                        const filename = `generated-${timestamp}-${randomString}`;
+                        
+                        // Call the image generation API
+                        const response = await fetch(IMAGE_GENERATION_API, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                prompt: prompt,
+                                style_selections: [styleSelect.value],
+                                performance_selection: performanceSelect.value,
+                                aspect_ratios_selection: aspectRatioSelect.value,
+                                save_name: filename
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`API request failed with status ${response.status}`);
+                        }
+                        
+                        // Get current date in YYYY-MM-DD format for the path
+                        const today = new Date();
+                        const dateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                        
+                        // Construct the image URL
+                        img.src = `http://localhost:8009/${filename}-0.png`;
                     }
                     
-                    // Get current date in YYYY-MM-DD format for the path
-                    const today = new Date();
-                    const dateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                    
-                    // Construct the image URL
-                    // NOTE: In a real implementation, you would need an endpoint to serve these images
-                    // This is just a simulation - replace with your actual image serving logic
-                    const imageUrl = `/outputs/files/${dateString}/${filename}`;
-                    
-                    // For demo purposes, we'll use a placeholder
-                    // Replace this with the actual image URL from your API
-                    img.src = `http://localhost:8009/${filename}-0.png`;
                     img.style.display = 'block';
                     placeholder.style.display = 'none';
                     
@@ -698,7 +761,7 @@
                     const retryBtn = document.createElement('button');
                     retryBtn.className = 'btn btn-sm btn-outline-secondary mt-2';
                     retryBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
-                    retryBtn.addEventListener('click', () => generateImage(prompt, index));
+                    retryBtn.addEventListener('click', () => generateImage(prompt, index, isDemoMode));
                     placeholder.appendChild(retryBtn);
                 }
             }
