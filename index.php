@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Image Generator</title>
+    <title>YouTube Shorts Creator</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
@@ -51,7 +51,7 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: var(--text-primary);
             resize: none;
-            min-height: 150px;
+            min-height: 100px;
         }
 
         .prompt-textarea:focus {
@@ -77,24 +77,6 @@
 
         .btn-generate:active {
             transform: translateY(0);
-        }
-
-        .image-placeholder {
-            background-color: rgba(255, 255, 255, 0.03);
-            border: 2px dashed rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            min-height: 400px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            color: var(--text-secondary);
-            transition: all 0.3s ease;
-        }
-
-        .image-placeholder:hover {
-            border-color: var(--accent-color);
-            color: var(--text-primary);
         }
 
         .settings-card {
@@ -125,7 +107,6 @@
             font-size: 0.8rem;
         }
 
-        /* Loading animation */
         .loader {
             display: none;
             width: 48px;
@@ -142,19 +123,114 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Generated image styling */
-        .generated-image {
-            max-width: 100%;
-            border-radius: 8px;
-            display: none;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-        }
-        
-        /* Error message */
         .error-message {
             color: #ff6b6b;
             display: none;
             margin-top: 10px;
+        }
+
+        .status-message {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .image-container {
+            position: relative;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            aspect-ratio: 9/16;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        .image-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-secondary);
+        }
+
+        .image-placeholder i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .prompt-display {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            padding: 10px;
+            font-size: 0.8rem;
+            color: white;
+            display: none;
+        }
+
+        .prompt-toggle {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0,0,0,0.5);
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .download-all-btn {
+            margin-top: 20px;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        .creating-video {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .prompt-item {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        
+        .regenerate-prompt {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: none;
+            border: none;
+            color: var(--accent-color);
+            cursor: pointer;
         }
     </style>
 </head>
@@ -162,7 +238,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="#">
-                <i class="fas fa-robot me-2"></i>AI Image Generator
+                <i class="fab fa-youtube me-2"></i>YouTube Shorts Creator
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -185,27 +261,43 @@
             <div class="row">
                 <div class="col-lg-8">
                     <div class="prompt-card p-4 mb-4">
-                        <h5 class="mb-3"><i class="fas fa-keyboard me-2"></i>Describe your image</h5>
-                        <textarea class="form-control prompt-textarea mb-3" id="promptInput" placeholder="Enter a detailed description of the image you want to generate..."></textarea>
+                        <h5 class="mb-3"><i class="fas fa-lightbulb me-2"></i>Video Idea</h5>
+                        <textarea class="form-control prompt-textarea mb-3" id="videoIdea" placeholder="Enter your YouTube Shorts video idea (e.g., '5 beautiful waterfalls around the world')"></textarea>
                         <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <button class="btn btn-sm btn-outline-secondary me-2" id="enhanceBtn">
-                                    <i class="fas fa-magic me-1"></i> Enhance
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary" id="randomBtn">
-                                    <i class="fas fa-random me-1"></i> Random
-                                </button>
-                            </div>
-                            <span class="text-muted small" id="charCount">0/500</span>
+                            <button class="btn btn-sm btn-outline-secondary" id="exampleBtn">
+                                <i class="fas fa-question-circle me-1"></i> Show Example
+                            </button>
+                            <button class="btn btn-generate" id="generatePromptsBtn">
+                                <i class="fas fa-bolt me-2"></i> Generate Prompts
+                            </button>
                         </div>
                     </div>
 
-                    <div class="image-placeholder mb-4" id="imagePlaceholder">
-                        <i class="fas fa-image fa-3x mb-3" id="placeholderIcon"></i>
-                        <p id="placeholderText">Your generated image will appear here</p>
-                        <div class="loader" id="loader"></div>
-                        <img src="" alt="Generated Image" class="generated-image" id="generatedImage">
-                        <div class="error-message" id="errorMessage"></div>
+                    <div id="promptsSection" style="display: none;">
+                        <h5 class="text-white mb-3"><i class="fas fa-list-ol me-2"></i>Generated Prompts</h5>
+                        <div class="prompt-card p-4 mb-4">
+                            <div id="promptsContainer"></div>
+                            <div class="d-flex justify-content-end mt-3">
+                                <button class="btn btn-generate" id="generateImagesBtn">
+                                    <i class="fas fa-image me-2"></i> Generate All Images
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="imagesSection" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="text-white mb-0"><i class="fas fa-images me-2"></i>Generated Images</h5>
+                            <button class="btn btn-sm btn-outline-secondary" id="arrangeBtn">
+                                <i class="fas fa-random me-1"></i> Re-arrange
+                            </button>
+                        </div>
+                        <div class="image-grid" id="imageGrid"></div>
+                        <div class="d-flex justify-content-center mt-4">
+                            <button class="btn btn-generate" id="createVideoBtn" style="display: none;">
+                                <i class="fas fa-film me-2"></i> Create YouTube Short
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -234,29 +326,41 @@
                         <div class="mb-3">
                             <label for="aspectRatioSelect" class="form-label">Aspect Ratio</label>
                             <select class="form-select" id="aspectRatioSelect">
-                                <option value="768*1344" selected>768×1344 (Portrait)</option>
+                                <option value="768*1344" selected>768×1344 (Shorts Vertical)</option>
                                 <option value="1344*768">1344×768 (Landscape)</option>
                                 <option value="1024*1024">1024×1024 (Square)</option>
                             </select>
                         </div>
 
-                        <button class="btn btn-generate w-100 py-3" id="generateBtn">
-                            <i class="fas fa-bolt me-2"></i> Generate Image
-                        </button>
+                        <div class="mb-3">
+                            <label for="transitionSelect" class="form-label">Transition Style</label>
+                            <select class="form-select" id="transitionSelect">
+                                <option value="fade" selected>Fade</option>
+                                <option value="slide">Slide</option>
+                                <option value="zoom">Zoom</option>
+                                <option value="none">None</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="settings-card p-4">
-                        <h5 class="mb-3"><i class="fas fa-share-alt me-2"></i>Share</h5>
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-outline-secondary flex-grow-1">
-                                <i class="fab fa-twitter me-1"></i> Twitter
-                            </button>
-                            <button class="btn btn-outline-secondary flex-grow-1">
-                                <i class="fab fa-discord me-1"></i> Discord
-                            </button>
-                            <button class="btn btn-outline-secondary" id="downloadBtn" disabled>
-                                <i class="fas fa-download"></i>
-                            </button>
+                        <h5 class="mb-3"><i class="fas fa-music me-2"></i>Audio Options</h5>
+                        <div class="mb-3">
+                            <label for="musicSelect" class="form-label">Background Music</label>
+                            <select class="form-select" id="musicSelect">
+                                <option value="upbeat" selected>Upbeat</option>
+                                <option value="calm">Calm</option>
+                                <option value="electronic">Electronic</option>
+                                <option value="none">No Music</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="voiceoverSelect" class="form-label">Voiceover</label>
+                            <select class="form-select" id="voiceoverSelect">
+                                <option value="male" selected>Male Voice</option>
+                                <option value="female">Female Voice</option>
+                                <option value="none">No Voiceover</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -266,7 +370,7 @@
 
     <footer class="footer text-center py-3">
         <div class="container">
-            <p class="mb-0">© 2023 AI Image Generator | Powered by Fooocus API</p>
+            <p class="mb-0">© 2023 YouTube Shorts Creator | Powered by AI</p>
         </div>
     </footer>
 
@@ -276,163 +380,327 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // DOM Elements
-            const promptInput = document.getElementById('promptInput');
-            const charCount = document.getElementById('charCount');
-            const generateBtn = document.getElementById('generateBtn');
-            const enhanceBtn = document.getElementById('enhanceBtn');
-            const randomBtn = document.getElementById('randomBtn');
-            const downloadBtn = document.getElementById('downloadBtn');
-            const imagePlaceholder = document.getElementById('imagePlaceholder');
-            const placeholderIcon = document.getElementById('placeholderIcon');
-            const placeholderText = document.getElementById('placeholderText');
-            const loader = document.getElementById('loader');
-            const generatedImage = document.getElementById('generatedImage');
-            const errorMessage = document.getElementById('errorMessage');
+            const videoIdea = document.getElementById('videoIdea');
+            const generatePromptsBtn = document.getElementById('generatePromptsBtn');
+            const generateImagesBtn = document.getElementById('generateImagesBtn');
+            const createVideoBtn = document.getElementById('createVideoBtn');
+            const exampleBtn = document.getElementById('exampleBtn');
+            const arrangeBtn = document.getElementById('arrangeBtn');
+            const promptsSection = document.getElementById('promptsSection');
+            const imagesSection = document.getElementById('imagesSection');
+            const promptsContainer = document.getElementById('promptsContainer');
+            const imageGrid = document.getElementById('imageGrid');
             const styleSelect = document.getElementById('styleSelect');
             const performanceSelect = document.getElementById('performanceSelect');
             const aspectRatioSelect = document.getElementById('aspectRatioSelect');
 
-            // Sample prompts for random button
-            const samplePrompts = [
-                "A majestic lion standing on a rock at sunset, cinematic lighting",
-                "Cyberpunk cityscape at night with neon lights and flying cars",
-                "Portrait of an elderly wizard with a long beard and glowing eyes",
-                "Futuristic spaceship landing on an alien planet with strange vegetation",
-                "Cute anime-style cat wearing a samurai outfit"
-            ];
+            // API Endpoints
+            const PROMPT_GENERATION_API = 'http://127.0.0.1:8888/v1/generation/generate-prompts';
+            const IMAGE_GENERATION_API = 'http://127.0.0.1:8888/v1/generation/text-to-image';
 
-            // Character counter for textarea
-            promptInput.addEventListener('input', function() {
-                const currentLength = this.value.length;
-                charCount.textContent = `${currentLength}/500`;
-                
-                if (currentLength > 500) {
-                    charCount.classList.add('text-danger');
-                } else {
-                    charCount.classList.remove('text-danger');
-                }
+            // Example button
+            exampleBtn.addEventListener('click', function() {
+                videoIdea.value = "5 most beautiful waterfalls in the world";
             });
 
-            // Enhance button - adds some common prompt enhancements
-            enhanceBtn.addEventListener('click', function() {
-                let prompt = promptInput.value.trim();
-                if (!prompt) return;
+            // Generate prompts button
+            generatePromptsBtn.addEventListener('click', async function() {
+                const idea = videoIdea.value.trim();
                 
-                // Add some common enhancements if they're not already there
-                if (!prompt.toLowerCase().includes("high quality")) prompt += ", high quality";
-                if (!prompt.toLowerCase().includes("4k")) prompt += ", 4k";
-                if (!prompt.toLowerCase().includes("detailed")) prompt += ", detailed";
-                
-                promptInput.value = prompt;
-                promptInput.dispatchEvent(new Event('input'));
-            });
-
-            // Random button - inserts a random sample prompt
-            randomBtn.addEventListener('click', function() {
-                const randomPrompt = samplePrompts[Math.floor(Math.random() * samplePrompts.length)];
-                promptInput.value = randomPrompt;
-                promptInput.dispatchEvent(new Event('input'));
-            });
-
-            // Download button
-            downloadBtn.addEventListener('click', function() {
-                if (!generatedImage.src) return;
-                
-                const link = document.createElement('a');
-                link.href = generatedImage.src;
-                link.download = 'generated-image.png';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
-
-            // Generate button functionality
-            generateBtn.addEventListener('click', async function() {
-                const prompt = promptInput.value.trim();
-                
-                if (!prompt) {
-                    showError("Please enter a description for your image");
+                if (!idea) {
+                    alert("Please enter a video idea");
                     return;
                 }
                 
                 // Show loading state
-                startLoading();
+                generatePromptsBtn.disabled = true;
+                generatePromptsBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Generating...';
                 
                 try {
-                    // Prepare the request data
-                    const requestData = {
-                        prompt: prompt,
-                        style_selections: [styleSelect.value],
-                        performance_selection: performanceSelect.value,
-                        aspect_ratios_selection: aspectRatioSelect.value
-                    };
-                    
-                    // Make the API call
-                    const response = await fetch('http://127.0.0.1:8888/v1/generation/text-to-image', {
+                    // Call the prompt generation API
+                    const response = await fetch(PROMPT_GENERATION_API, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify(requestData)
+                        body: JSON.stringify({
+                            video_idea: idea,
+                            num_prompts: 5
+                        })
                     });
                     
                     if (!response.ok) {
                         throw new Error(`API request failed with status ${response.status}`);
                     }
                     
-                    // Assuming the API returns the image directly
-                    // If it returns JSON with an image URL, you would need to adjust this
-                    const imageBlob = await response.blob();
-                const tempUrl = URL.createObjectURL(imageBlob);
-                console.log('blobbly:', tempUrl);
-
-                const basePathx = "D:\\PycharmProjects\\fooocus\\Fooocus\\outputs\\files\\2025-05-08\\";
-                const fileNamex = tempUrl.replace("http://localhost/", "") + ".png";
-                const imageUrl = basePathx + fileNamex;
-
-                console.log('Final path:', imageUrl);
-
-                    // Display the generated image
-                    generatedImage.src = imageUrl;
-                    generatedImage.style.display = 'block';
-                    placeholderIcon.style.display = 'none';
-                    placeholderText.style.display = 'none';
-                    errorMessage.style.display = 'none';
+                    const data = await response.json();
+                    const prompts = data.prompts || [];
                     
-                    // Enable download button
-                    downloadBtn.disabled = false;
+                    if (prompts.length === 0) {
+                        throw new Error("No prompts were generated");
+                    }
+                    
+                    // Display prompts
+                    displayPrompts(prompts);
+                    
+                    // Show prompts section
+                    promptsSection.style.display = 'block';
                     
                 } catch (error) {
-                    console.error('Error generating image:', error);
-                    showError("Failed to generate image. Please try again.");
+                    console.error('Error generating prompts:', error);
+                    alert("Failed to generate prompts. Using example prompts instead.");
+                    
+                    // Fallback to example prompts
+                    const examplePrompts = [
+                        "A breathtaking view of Niagara Falls from the Canadian side with rainbow in the mist",
+                        "Angel Falls in Venezuela cascading down the tabletop mountain",
+                        "Iguazu Falls with its hundreds of cascades surrounded by lush rainforest",
+                        "Victoria Falls with its massive curtain of water creating a permanent rainbow",
+                        "Plitvice Lakes waterfalls in Croatia with their turquoise waters and lush surroundings"
+                    ];
+                    displayPrompts(examplePrompts);
+                    promptsSection.style.display = 'block';
                 } finally {
-                    // Reset loading state
-                    stopLoading();
+                    // Reset button
+                    generatePromptsBtn.disabled = false;
+                    generatePromptsBtn.innerHTML = '<i class="fas fa-bolt me-2"></i> Generate Prompts';
                 }
             });
 
+            // Generate images button
+            generateImagesBtn.addEventListener('click', async function() {
+                // Get all prompts
+                const promptElements = document.querySelectorAll('.prompt-item');
+                const prompts = Array.from(promptElements).map(el => el.querySelector('.prompt-text').textContent.trim());
+                
+                if (prompts.length === 0) {
+                    alert("No prompts to generate");
+                    return;
+                }
+                
+                // Show loading state
+                generateImagesBtn.disabled = true;
+                generateImagesBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Generating...';
+                
+                // Clear previous images
+                imageGrid.innerHTML = '';
+                
+                // Create image containers
+                for (let i = 0; i < prompts.length; i++) {
+                    const container = document.createElement('div');
+                    container.className = 'image-container';
+                    container.innerHTML = `
+                        <div class="image-placeholder">
+                            <i class="fas fa-image"></i>
+                            <small>Generating image ${i+1}</small>
+                        </div>
+                        <img src="" alt="${prompts[i]}" class="generated-image" data-prompt="${prompts[i]}">
+                        <div class="prompt-display">${prompts[i]}</div>
+                        <button class="prompt-toggle" title="Toggle prompt"><i class="fas fa-comment"></i></button>
+                    `;
+                    imageGrid.appendChild(container);
+                }
+                
+                // Show images section
+                imagesSection.style.display = 'block';
+                
+                // Generate images in parallel
+                const generationPromises = prompts.map((prompt, index) => 
+                    generateImage(prompt, index)
+                );
+                
+                try {
+                    await Promise.all(generationPromises);
+                    // Enable create video button
+                    createVideoBtn.style.display = 'inline-block';
+                } catch (error) {
+                    console.error('Error generating images:', error);
+                    alert("Some images failed to generate. Please try again.");
+                } finally {
+                    // Reset button
+                    generateImagesBtn.disabled = false;
+                    generateImagesBtn.innerHTML = '<i class="fas fa-image me-2"></i> Generate All Images';
+                    
+                    // Add event listeners for prompt toggles
+                    document.querySelectorAll('.prompt-toggle').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const promptDisplay = this.parentElement.querySelector('.prompt-display');
+                            promptDisplay.style.display = promptDisplay.style.display === 'none' ? 'block' : 'none';
+                        });
+                    });
+                }
+            });
+
+            // Create video button
+            createVideoBtn.addEventListener('click', function() {
+                createVideoBtn.disabled = true;
+                createVideoBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Creating Video...';
+                createVideoBtn.classList.add('creating-video');
+                
+                // Get all generated images
+                const images = Array.from(document.querySelectorAll('.generated-image'))
+                    .filter(img => img.style.display === 'block')
+                    .map(img => ({
+                        src: img.src,
+                        prompt: img.dataset.prompt
+                    }));
+                
+                if (images.length === 0) {
+                    alert("No images available to create video");
+                    createVideoBtn.disabled = false;
+                    createVideoBtn.innerHTML = '<i class="fas fa-film me-2"></i> Create YouTube Short';
+                    createVideoBtn.classList.remove('creating-video');
+                    return;
+                }
+                
+                // In a real implementation, you would send these to your video creation API
+                console.log("Creating video with images:", images);
+                
+                // Simulate video creation
+                setTimeout(() => {
+                    alert("Video created successfully! (This would export a video file in a real implementation)");
+                    createVideoBtn.disabled = false;
+                    createVideoBtn.innerHTML = '<i class="fas fa-film me-2"></i> Create YouTube Short';
+                    createVideoBtn.classList.remove('creating-video');
+                }, 3000);
+            });
+
+            // Re-arrange button
+            arrangeBtn.addEventListener('click', function() {
+                const containers = Array.from(document.querySelectorAll('.image-container'));
+                for (let i = containers.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [containers[i], containers[j]] = [containers[j], containers[i]];
+                }
+                containers.forEach(container => imageGrid.appendChild(container));
+            });
+
             // Helper functions
-            function startLoading() {
-                generateBtn.disabled = true;
-                generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Generating...';
-                loader.style.display = 'block';
-                placeholderIcon.style.display = 'none';
-                placeholderText.style.display = 'none';
-                generatedImage.style.display = 'none';
-                errorMessage.style.display = 'none';
+            function displayPrompts(prompts) {
+                promptsContainer.innerHTML = '';
+                prompts.forEach((prompt, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'prompt-item mb-2 p-2';
+                    div.innerHTML = `
+                        <span class="prompt-text">${index + 1}. ${prompt}</span>
+                        <button class="regenerate-prompt" data-index="${index}" title="Regenerate this prompt">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    `;
+                    promptsContainer.appendChild(div);
+                    
+                    // Add event listener for regenerate button
+                    div.querySelector('.regenerate-prompt').addEventListener('click', async function() {
+                        await regeneratePrompt(index);
+                    });
+                });
             }
 
-            function stopLoading() {
-                generateBtn.disabled = false;
-                generateBtn.innerHTML = '<i class="fas fa-bolt me-2"></i> Generate Image';
-                loader.style.display = 'none';
+            async function regeneratePrompt(index) {
+                const idea = videoIdea.value.trim();
+                if (!idea) return;
+                
+                const promptItem = document.querySelectorAll('.prompt-item')[index];
+                const regenerateBtn = promptItem.querySelector('.regenerate-prompt');
+                
+                // Show loading
+                regenerateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                try {
+                    // Call API to regenerate a single prompt
+                    const response = await fetch(PROMPT_GENERATION_API, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            video_idea: idea,
+                            num_prompts: 1
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API request failed with status ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    const newPrompt = data.prompts?.[0] || "New prompt could not be generated";
+                    
+                    // Update the prompt
+                    promptItem.querySelector('.prompt-text').textContent = `${index + 1}. ${newPrompt}`;
+                    
+                } catch (error) {
+                    console.error('Error regenerating prompt:', error);
+                    alert("Failed to regenerate prompt");
+                } finally {
+                    // Reset button
+                    regenerateBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+                }
             }
 
-            function showError(message) {
-                errorMessage.textContent = message;
-                errorMessage.style.display = 'block';
-                placeholderIcon.style.display = 'flex';
-                placeholderText.style.display = 'block';
+            async function generateImage(prompt, index) {
+                const containers = document.querySelectorAll('.image-container');
+                const container = containers[index];
+                const img = container.querySelector('img');
+                const placeholder = container.querySelector('.image-placeholder');
+                
+                // Show loading for this image
+                placeholder.innerHTML = '<i class="fas fa-spinner fa-spin"></i><small>Generating...</small>';
+                
+                try {
+                    // Generate a random filename
+                    const timestamp = new Date().getTime();
+                    const randomString = Math.random().toString(36).substring(2, 8);
+                    const filename = `generated-${timestamp}-${randomString}`;
+                    
+                    // Call the image generation API
+                    const response = await fetch(IMAGE_GENERATION_API, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            prompt: prompt,
+                            style_selections: [styleSelect.value],
+                            performance_selection: performanceSelect.value,
+                            aspect_ratios_selection: aspectRatioSelect.value,
+                            save_name: filename
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API request failed with status ${response.status}`);
+                    }
+                    
+                    // Get current date in YYYY-MM-DD format for the path
+                    const today = new Date();
+                    const dateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                    
+                    // Construct the image URL
+                    // NOTE: In a real implementation, you would need an endpoint to serve these images
+                    // This is just a simulation - replace with your actual image serving logic
+                    const imageUrl = `/outputs/files/${dateString}/${filename}`;
+                    
+                    // For demo purposes, we'll use a placeholder
+                    // Replace this with the actual image URL from your API
+                    img.src = `http://localhost:8009/${filename}-0.png`;
+                    img.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    
+                    // Show the prompt display
+                    container.querySelector('.prompt-display').style.display = 'block';
+                    
+                } catch (error) {
+                    console.error('Error generating image:', error);
+                    placeholder.innerHTML = '<i class="fas fa-exclamation-triangle"></i><small>Failed to generate</small>';
+                    
+                    // Retry button
+                    const retryBtn = document.createElement('button');
+                    retryBtn.className = 'btn btn-sm btn-outline-secondary mt-2';
+                    retryBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+                    retryBtn.addEventListener('click', () => generateImage(prompt, index));
+                    placeholder.appendChild(retryBtn);
+                }
             }
         });
     </script>
