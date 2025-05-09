@@ -1,7 +1,9 @@
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from voiceoverai import fetch_voiceover
 from openai import OpenAI
+
 import json
 import re
 
@@ -35,20 +37,22 @@ Return ONLY a JSON array with prompt strings.
 """
 
 SCRIPT_GENERATION_SYSTEM = """
-You are a YouTube Shorts script writer. Create engaging, concise scripts for short videos.
+You are a YouTube Shorts script writer. high-retention scripts that instantly hook viewers, maintain suspense, and end with a compelling call-to-action, deliver value quickly, and boost engagement.
 
-Rules:
-1. Keep it under 60 seconds (100-150 words max)
-2. Start with a strong hook (first 3 seconds)
-3. Use simple, conversational language
-4. Include clear section transitions
-5. End with a call-to-action (like, follow, etc.)
-6. Structure: Hook -> 3 main points -> Conclusion
+Script Guidelines:
+1. Duration: Keep each script under 60 seconds (100–150 words).
+2. Hook: Begin with a bold, attention-grabbing statement in the first 3 seconds.
+3. Language: Use simple, clear, and conversational language—avoid complex or formal wording.
+4. Structure: Hook → 3 engaging key points → Conclusion with a strong call-to-action (CTA).
+5. Flow: Ensure smooth, natural transitions between lines. Every sentence should keep the viewer interested.
+6. Tone: Fast-paced, energetic, and compelling—no fluff or filler.
+7. Style Rules:
+   - Do not use emojis.
+   - Do not include section labels like [Hook] or [CTA].
+   - Write in plain, voiceover-ready text.
 
-Format:
-[Opening Hook]
-[Main Content - 3 key points]
-[Closing & CTA]
+Output Format:
+Return the complete script as plain text only—no labels, no formatting instructions, just the final script.
 """
 
 def ai_generate(prompt, system_message):
@@ -112,6 +116,45 @@ def generate_prompts():
 
     return jsonify({'prompts': prompts})
 
+
+
+@app.route('/generate-voiceover', methods=['POST'])
+def generate_voiceover():
+    data = request.get_json()
+    script = data.get('script', '')
+    #voice_type = data.get('voice_type', '1')
+    save_name = data.get('save_name', 'voiceover')
+    
+    print("Apifetche script is",script)
+
+    if DEMO_MODE == 1:
+        return jsonify({
+            'message': 'Demo voiceover generated',
+            'filename': f'{save_name}_voice.mp3'
+        })
+    
+    try:
+        # Call your voice generation API or service here
+        # This is a placeholder - replace with your actual voice generation code
+        voice_file = fetch_voiceover(script, save_name)
+        
+        if not voice_file:
+            raise ValueError("Voice generation failed")
+            
+        return jsonify({
+            'message': 'Voiceover generated successfully',
+            'filename': voice_file
+        })
+        
+    except Exception as e:
+        print(f"Error generating voiceover: {str(e)}")
+        return jsonify({
+            'error': 'Failed to generate voiceover',
+            'details': str(e)
+        }), 500
+
+
+
 @app.route('/generate-script', methods=['POST'])
 def generate_script():
     data = request.get_json()
@@ -132,7 +175,7 @@ Did you know these amazing facts about {topic}? Stick around to see them all!
 Which fact surprised you most? Like and follow for more amazing content!"""
     else:
         try:
-            prompt = f"Create a YouTube Shorts script about: {topic}"
+            prompt = f"Create a script about: {topic}"
             script = ai_generate(prompt, SCRIPT_GENERATION_SYSTEM)
             
             if not script or len(script) < 20:

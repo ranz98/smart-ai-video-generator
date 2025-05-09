@@ -52,6 +52,7 @@
                             <button class="btn btn-generate" id="generatePromptsBtn">
                                 <i class="fas fa-bolt me-2"></i> Generate Prompts & Script
                             </button>
+                        
                         </div>
                     </div>
 
@@ -59,6 +60,9 @@
                         <h5 class="text-white mb-3"><i class="fas fa-scroll me-2"></i>Generated Script</h5>
                         <div class="script-container">
                             <pre class="script-text" id="scriptText"></pre>
+                            <button class="btn btn-generate" id="generateVoiceBtn">
+                            <i class="fas fa-microphone me-2"></i> Generate Voiceover
+                            </button>
                         </div>
                     </div>
 
@@ -68,8 +72,9 @@
                             <div id="promptsContainer"></div>
                             <div class="d-flex justify-content-end mt-3">
                                 <button class="btn btn-generate" id="generateImagesBtn">
-                                    <i class="fas fa-image me-2"></i> Generate All Images
+                                    <i class="fas fa-image me-2"></i> Generate All Imagesx
                                 </button>
+                             
                             </div>
                         </div>
                     </div>
@@ -86,6 +91,7 @@
                             <button class="btn btn-generate" id="createVideoBtn" style="display: none;">
                                 <i class="fas fa-film me-2"></i> Create YouTube Short
                             </button>
+                           
                         </div>
                     </div>
                 </div>
@@ -129,8 +135,22 @@
                                 <option value="3">3</option>
                                 <option value="4">4</option>
                                 <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
                             </select>
                         </div>
+
+                        <div class="mb-3">
+                            <label for="VoiceSelect" class="form-label">Voice Over</label>
+                            <select class="form-select" id="VoiceSelect">
+                                <option value="1" selected>1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                            </select>
+                        </div>
+
 
                     </div>
                 </div>
