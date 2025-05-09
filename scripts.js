@@ -19,6 +19,7 @@
             const aspectRatioSelect = document.getElementById('aspectRatioSelect');
             const QuantitySelect = document.getElementById('QuantitySelect');
             const generateVoiceBtn = document.getElementById('generateVoiceBtn');
+            const uniqueID = 'Gen' + Math.floor(10000 + Math.random() * 90000);
 
             // API Endpoints
             const PROMPT_GENERATION_API = 'http://localhost:5000/generate-prompts';
@@ -228,7 +229,7 @@
                 const script = scriptText.textContent.trim();
                 const isDemoMode = demoModeToggle.checked;
                 
-                console.log('setched script:', script);
+                console.log('fetched script:', script);
 
                 if (!script) {
                     alert("Please generate a script first");
@@ -242,6 +243,36 @@
                     if (isDemoMode) {
                         // Demo mode - simulate voice generation
                         alert("Voice generated successfully (demo mode)");
+                        const randomString = Math.random().toString(36).substring(2, 8);
+                        const filename = `${uniqueID}_${randomString}`;
+                        console.log("filenamex",filename)
+                        
+                        {
+                            // Get the filename from the first generated image
+                            
+                            const response = await fetch('http://localhost:5000/generate-voiceover', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    script: "demoo",
+                                    //voice_type: VoiceSelect.value,
+                                    save_name: filename
+                                })
+                            });
+                            
+                            if (!response.ok) {
+                                throw new Error("demo Failed to generate voiceover");
+                            }
+                            
+                            const data = await response.json();
+                            alert(`demo Voiceover generated successfully: ${data.message}`);
+                        }
+
+
+
+
                     } else {
                         // Get the filename from the first generated image
                         const firstImage = document.querySelector('.generated-image');
@@ -249,7 +280,9 @@
                         
                         if (firstImage && firstImage.src) {
                             const urlParts = firstImage.src.split('/');
-                            filename = urlParts[urlParts.length - 1].split('-0.png')[0];
+                            //filename = urlParts[urlParts.length - 1].split('-0.png')[0];
+                            const randomString = Math.random().toString(36).substring(2, 8);
+                            filename = `${uniqueID}_${randomString}`;
                         }
                         
                         const response = await fetch('http://localhost:5000/generate-voiceover', {
@@ -371,7 +404,7 @@
                         // Generate a random filename
                         const timestamp = new Date().getTime();
                         const randomString = Math.random().toString(36).substring(2, 8);
-                        const filename = `generated-${timestamp}-${randomString}`;
+                        const filename = `${uniqueID}_${randomString}`;
                         
                         // Call the image generation API
                         const response = await fetch(IMAGE_GENERATION_API, {

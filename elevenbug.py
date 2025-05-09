@@ -2,7 +2,7 @@ import os
 import re
 from datetime import datetime
 from elevenlabs.client import ElevenLabs
-from elevenlabs import save, play
+from elevenlabs import save
 
 # Load API key
 with open(r'E:\elevenlabsapi.txt', 'r') as file:
@@ -23,9 +23,7 @@ def fetch_voiceover(script, filenamex):
     os.makedirs(output_dir, exist_ok=True)
 
     # Clean filename
-    #filenamez = re.sub(r'[^a-zA-Z0-9\s]', '', filenamex).strip() + ".mp3"
-    filenamez = re.sub(r'[^a-zA-Z0-9_]', '', filenamex) + ".mp3"
-
+    filenamez = re.sub(r'[^a-zA-Z0-9\s]', '', filenamex).strip() + ".mp3"
     output_path = os.path.join(output_dir, filenamez)
 
     # Generate audio using Adam's voice
@@ -39,5 +37,5 @@ def fetch_voiceover(script, filenamex):
     # Save the MP3
     save(audio, output_path)
     print(f"✅ MP3 saved at: {output_path}")
-    play(audio)
+
 fetch_voiceover("test", "testfilezzz")
