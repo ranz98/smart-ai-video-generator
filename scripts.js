@@ -276,15 +276,15 @@
                     } else {
                         // Get the filename from the first generated image
                         const firstImage = document.querySelector('.generated-image');
-                        let filename = "default_voice";
+                        //let filename = "default_voice";
                         
                         if (firstImage && firstImage.src) {
                             const urlParts = firstImage.src.split('/');
                             //filename = urlParts[urlParts.length - 1].split('-0.png')[0];
-                            const randomString = Math.random().toString(36).substring(2, 8);
-                            filename = `${uniqueID}_${randomString}`;
                         }
-                        
+                        const randomString = Math.random().toString(36).substring(2, 8);
+                        const filename = `${uniqueID}_${randomString}`;
+
                         const response = await fetch('http://localhost:5000/generate-voiceover', {
                             method: 'POST',
                             headers: {
