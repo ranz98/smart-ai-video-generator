@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from openai import OpenAI
@@ -78,7 +79,7 @@ def extract_json_array(text):
 def generate_prompts():
     data = request.get_json()
     topic = data.get('video_idea', '')
-    num_prompts = data.get('num_prompts', 5)
+    num_prompts = data.get('num_prompts','')
 
     if DEMO_MODE == 1:
         prompts = [
@@ -90,11 +91,16 @@ def generate_prompts():
         ]
     else:
         try:
+            print(f"Generating {num_prompts} image prompts about: {topic}")
             prompt = f"Generate exactly {num_prompts} image prompts about: {topic}"
             response = ai_generate(prompt, PROMPT_GENERATION_SYSTEM)
             prompts = extract_json_array(response)
             
-            if not prompts or len(prompts) != num_prompts:
+            print(f"Generated{prompts}")
+            print(f"debug{len(prompts)} and {num_prompts}")
+
+            numpromptint = int(num_prompts)
+            if not prompts or len(prompts) != numpromptint:
                 raise ValueError("Invalid prompt format received")
                 
         except Exception as e:
@@ -140,6 +146,13 @@ Which fact surprised you most? Like and follow for more amazing content!"""
             }), 500
 
     return jsonify({'script': script})
+
+IMAGE_FOLDER = os.path.abspath("images") 
+
+@app.route('/output/<filename>')
+def serve_image(filename):
+    return send_from_directory(IMAGE_FOLDER, filename)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
