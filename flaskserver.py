@@ -1,7 +1,9 @@
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from voiceoverai import fetch_voiceover
 from openai import OpenAI
+
 import json
 import re
 
@@ -44,7 +46,7 @@ Rules:
 4. Include clear section transitions
 5. End with a call-to-action (like, follow, etc.)
 6. Structure: Hook -> 3 main points -> Conclusion
-
+7. Do not include any emojis
 Format:
 [Opening Hook]
 [Main Content - 3 key points]
@@ -111,6 +113,45 @@ def generate_prompts():
             }), 500
 
     return jsonify({'prompts': prompts})
+
+
+
+@app.route('/generate-voiceover', methods=['POST'])
+def generate_voiceover():
+    data = request.get_json()
+    script = data.get('script', '')
+    #voice_type = data.get('voice_type', '1')
+    save_name = data.get('save_name', 'voiceover')
+    
+    print("Apifetche script is",script)
+
+    if DEMO_MODE == 1:
+        return jsonify({
+            'message': 'Demo voiceover generated',
+            'filename': f'{save_name}_voice.mp3'
+        })
+    
+    try:
+        # Call your voice generation API or service here
+        # This is a placeholder - replace with your actual voice generation code
+        voice_file = fetch_voiceover(script, save_name)
+        
+        if not voice_file:
+            raise ValueError("Voice generation failed")
+            
+        return jsonify({
+            'message': 'Voiceover generated successfully',
+            'filename': voice_file
+        })
+        
+    except Exception as e:
+        print(f"Error generating voiceover: {str(e)}")
+        return jsonify({
+            'error': 'Failed to generate voiceover',
+            'details': str(e)
+        }), 500
+
+
 
 @app.route('/generate-script', methods=['POST'])
 def generate_script():

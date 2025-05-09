@@ -18,6 +18,7 @@
             const performanceSelect = document.getElementById('performanceSelect');
             const aspectRatioSelect = document.getElementById('aspectRatioSelect');
             const QuantitySelect = document.getElementById('QuantitySelect');
+            const generateVoiceBtn = document.getElementById('generateVoiceBtn');
 
             // API Endpoints
             const PROMPT_GENERATION_API = 'http://localhost:5000/generate-prompts';
@@ -220,6 +221,66 @@
                 containers.forEach(container => imageGrid.appendChild(container));
             });
 
+
+            // Add this event listener
+            generateVoiceBtn.addEventListener('click', async function() {
+
+                const script = scriptText.textContent.trim();
+                const isDemoMode = demoModeToggle.checked;
+                
+                console.log('setched script:', script);
+
+                if (!script) {
+                    alert("Please generate a script first");
+                    return;
+                }
+                
+                generateVoiceBtn.disabled = true;
+                generateVoiceBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Generating...';
+                
+                try {
+                    if (isDemoMode) {
+                        // Demo mode - simulate voice generation
+                        alert("Voice generated successfully (demo mode)");
+                    } else {
+                        // Get the filename from the first generated image
+                        const firstImage = document.querySelector('.generated-image');
+                        let filename = "default_voice";
+                        
+                        if (firstImage && firstImage.src) {
+                            const urlParts = firstImage.src.split('/');
+                            filename = urlParts[urlParts.length - 1].split('-0.png')[0];
+                        }
+                        
+                        const response = await fetch('http://localhost:5000/generate-voiceover', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                script: script,
+                                //voice_type: VoiceSelect.value,
+                                save_name: filename
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error("Failed to generate voiceover");
+                        }
+                        
+                        const data = await response.json();
+                        alert(`Voiceover generated successfully: ${data.message}`);
+                    }
+                } catch (error) {
+                    console.error('Error generating voiceover:', error);
+                    alert(error.message || "Failed to generate voiceover");
+                } finally {
+                    generateVoiceBtn.disabled = false;
+                    generateVoiceBtn.innerHTML = '<i class="fas fa-microphone me-2"></i> Generate Voiceover';
+                }
+            });
+    
+
             // Helper functions
             function displayPrompts(prompts) {
                 promptsContainer.innerHTML = '';
@@ -343,7 +404,8 @@
                     
                     img.style.display = 'block';
                     placeholder.style.display = 'none';
-                    
+                    generateVoiceBtn.style.display = 'inline-block';
+
                     // Show the prompt display
                     container.querySelector('.prompt-display').style.display = 'block';
                     
