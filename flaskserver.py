@@ -98,8 +98,8 @@ def generate_prompts():
             print(f"Generated{prompts}")
             print(f"debug{len(prompts)} and {num_prompts}")
 
-
-            if not prompts or len(prompts) != num_prompts:
+            numpromptint = int(num_prompts)
+            if not prompts or len(prompts) != numpromptint:
                 raise ValueError("Invalid prompt format received")
                 
         except Exception as e:
