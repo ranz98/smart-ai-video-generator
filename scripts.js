@@ -335,8 +335,10 @@
                         const today = new Date();
                         const dateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
                         
+
                         // Construct the image URL
-                        img.src = `http://localhost:8009/${filename}-0.png`;
+                        img.src = `http://localhost//shorts//output//${dateString}//${filename}-0.png`;
+                       
                     }
                     
                     img.style.display = 'block';

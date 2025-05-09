@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from openai import OpenAI
@@ -145,6 +146,13 @@ Which fact surprised you most? Like and follow for more amazing content!"""
             }), 500
 
     return jsonify({'script': script})
+
+IMAGE_FOLDER = os.path.abspath("images") 
+
+@app.route('/output/<filename>')
+def serve_image(filename):
+    return send_from_directory(IMAGE_FOLDER, filename)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
