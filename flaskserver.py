@@ -78,7 +78,7 @@ def extract_json_array(text):
 def generate_prompts():
     data = request.get_json()
     topic = data.get('video_idea', '')
-    num_prompts = data.get('num_prompts', 5)
+    num_prompts = data.get('num_prompts','')
 
     if DEMO_MODE == 1:
         prompts = [
@@ -90,10 +90,15 @@ def generate_prompts():
         ]
     else:
         try:
+            print(f"Generating {num_prompts} image prompts about: {topic}")
             prompt = f"Generate exactly {num_prompts} image prompts about: {topic}"
             response = ai_generate(prompt, PROMPT_GENERATION_SYSTEM)
             prompts = extract_json_array(response)
             
+            print(f"Generated{prompts}")
+            print(f"debug{len(prompts)} and {num_prompts}")
+
+
             if not prompts or len(prompts) != num_prompts:
                 raise ValueError("Invalid prompt format received")
                 
