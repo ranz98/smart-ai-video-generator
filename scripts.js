@@ -392,20 +392,28 @@
                 const container = containers[index];
                 const img = container.querySelector('img');
                 const placeholder = container.querySelector('.image-placeholder');
-                
+            
                 // Show loading for this image
                 placeholder.innerHTML = '<i class="fas fa-spinner fa-spin"></i><small>Generating...</small>';
-                
+            
+                // Calculate the image number (starts from 1)
+                const imageNumber = index + 1; // This will be 1, 2, 3, ...
+            
                 try {
                     if (isDemoMode) {
-                        // Use demo image
-                        img.src = `https://source.unsplash.com/random/768x1344/?${encodeURIComponent(prompt.split(' ')[0])}`;
+                        // Use demo image URL (optional: you could update this for consistency if desired)
+                        img.src = `https://source.unsplash.com/random/768x1344/?${encodeURIComponent(prompt.split(' ')[0])}&sig=${imageNumber}`; // Added imageNumber to sig for slight variation in demo
+                        console.log(`Demo image for prompt ${imageNumber} loaded.`);
                     } else {
-                        // Generate a random filename
-                        const timestamp = new Date().getTime();
+                        // Generate a random string for added uniqueness within the session
                         const randomString = Math.random().toString(36).substring(2, 8);
-                        const filename = `${uniqueID}_${randomString}`;
-                        
+            
+                        // Construct the desired filename format: UniqueID_randomstring_X
+                        // This is the name that will be requested from the image generation API to save the file as.
+                        const filename = `${uniqueID}_${randomString}_${imageNumber}`; // <<< MODIFIED LINE
+            
+                        console.log(`Attempting to generate image for prompt ${imageNumber} with save_name: ${filename}`);
+            
                         // Call the image generation API
                         const response = await fetch(IMAGE_GENERATION_API, {
                             method: 'POST',
@@ -417,35 +425,38 @@
                                 style_selections: [styleSelect.value],
                                 performance_selection: performanceSelect.value,
                                 aspect_ratios_selection: aspectRatioSelect.value,
-                                save_name: filename
+                                save_name: filename // Send the updated filename to the API
                             })
                         });
-                        
+            
                         if (!response.ok) {
                             throw new Error(`API request failed with status ${response.status}`);
                         }
-                        
-                        // Get current date in YYYY-MM-DD format for the path
+            
+                        // Assuming the image generation API saves the file using the provided save_name
+                        // and possibly appends a suffix like '-0.png', we construct the URL to load it.
                         const today = new Date();
                         const dateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-                        
-
-                        // Construct the image URL
-                        img.src = `http://localhost//shorts//output//${dateString}//${filename}-0.png`;
-                       
+            
+                        // Construct the image URL based on the expected saved filename format
+                        // This URL must match where the external API actually saves the file
+                        img.src = `http://localhost//shorts//output//${dateString}//${filename}-0.png`; // <<< MODIFIED LINE (uses the new 'filename' variable)
+            
+                        console.log(`Image URL constructed: ${img.src}`);
                     }
-                    
+            
                     img.style.display = 'block';
                     placeholder.style.display = 'none';
-                    generateVoiceBtn.style.display = 'inline-block';
-
+                    // Check if voiceover button should be shown - maybe move this logic outside the image loop
+                    // generateVoiceBtn.style.display = 'inline-block'; // This might be better handled after all images are generated or based on script existence
+            
                     // Show the prompt display
                     container.querySelector('.prompt-display').style.display = 'block';
-                    
+            
                 } catch (error) {
-                    console.error('Error generating image:', error);
+                    console.error(`Error generating image for prompt ${imageNumber}:`, error);
                     placeholder.innerHTML = '<i class="fas fa-exclamation-triangle"></i><small>Failed to generate</small>';
-                    
+            
                     // Retry button
                     const retryBtn = document.createElement('button');
                     retryBtn.className = 'btn btn-sm btn-outline-secondary mt-2';
