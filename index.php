@@ -56,15 +56,21 @@
                         </div>
                     </div>
 
-                    <div id="scriptSection" style="display: none;">
-                        <h5 class="text-white mb-3"><i class="fas fa-scroll me-2"></i>Generated Script</h5>
-                        <div class="script-container">
-                            <pre class="script-text" id="scriptText"></pre>
+                                    <div id="scriptSection" style="display: none;">
+                    <h5 class="text-white mb-3"><i class="fas fa-scroll me-2"></i>Generated Script</h5>
+                    <div class="script-container">
+                        <textarea class="form-control script-text" id="scriptText" rows="10" placeholder="Generated script will appear here..."></textarea>
+
+                        <div class="d-flex justify-content-end mt-3">
+                            <button class="btn btn-secondary me-2" id="saveScriptBtn" style="display: none;">
+                                <i class="fas fa-save me-2"></i> Save Changes
+                            </button>
                             <button class="btn btn-generate" id="generateVoiceBtn">
                             <i class="fas fa-microphone me-2"></i> Generate Voiceover
                             </button>
                         </div>
                     </div>
+                </div>
 
                     <div id="promptsSection" style="display: none;">
                         <h5 class="text-white mb-3"><i class="fas fa-list-ol me-2"></i>Generated Prompts</h5>
