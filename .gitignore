@@ -14,3 +14,7 @@ node_modules/
 .DS_Store
 
 /output/
+/shorts_with_audio/
+/temp_audio/
+/videos/
+/voiceovers/

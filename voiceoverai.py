@@ -4,75 +4,92 @@ from datetime import datetime
 from elevenlabs.client import ElevenLabs
 from elevenlabs import save, play # Keep play if you use it elsewhere, otherwise can remove
 
+# --- Configuration ---
+# Define the base directory where dated subfolders will be created
+BASE_SAVE_DIRECTORY = r'D:\Program Files\xampp\htdocs\shorts\output'
+API_KEY_FILE_PATH = r'E:\elevenlabsapi.txt' # Path to your ElevenLabs API key file
+
 # Load API key
-# Use os.path.join for cross-platform compatibility
-api_key_path = r'E:\elevenlabsapi.txt'
+api_key_E = None
 try:
-    with open(api_key_path, 'r') as file:
-        api_keyE = file.read().strip()
-    if not api_keyE:
+    with open(API_KEY_FILE_PATH, 'r') as file:
+        api_key_E = file.read().strip()
+    if not api_key_E:
         raise ValueError("ElevenLabs API key is empty.")
     print("ElevenLabs API key loaded successfully.")
 except FileNotFoundError:
-    print(f"Error: ElevenLabs API key file not found at {api_key_path}")
-    api_keyE = None # Set to None if file not found
+    print(f"Error: ElevenLabs API key file not found at {API_KEY_FILE_PATH}")
 except Exception as e:
     print(f"Error loading ElevenLabs API key: {e}")
-    api_keyE = None # Set to None on other errors
-
 
 # Initialize ElevenLabs client
-clientE = None # Initialize client to None
-if api_keyE:
+clientE = None
+if api_key_E:
     try:
-        clientE = ElevenLabs(api_key=api_keyE)
+        clientE = ElevenLabs(api_key=api_key_E)
         # Optional: Test a simple call to verify the key/client
         # clientE.voices.get_all()
         print("ElevenLabs client initialized successfully.")
     except Exception as e:
         print(f"Error initializing ElevenLabs client: {e}")
-        clientE = None # Set to None if initialization fails
+        clientE = None
 
 
-def fetch_voiceover(script, save_path):
+def fetch_voiceover(script, original_save_path_from_app):
     """
     Generates voiceover for the given script using ElevenLabs API
-    and saves the audio to the specified file path.
+    and saves the audio to a date-specific subfolder within BASE_SAVE_DIRECTORY.
 
     Args:
         script (str): The text script to convert to speech.
-        save_path (str): The full path (including filename and .mp3 extension)
-                         where the generated audio should be saved. This path
-                         is provided by app.py and should be used directly.
+        original_save_path_from_app (str):
+            The original save path suggestion from app.py (e.g., "my_video/audio.mp3" or just "audio.mp3").
+            Only the filename component of this path will be used. The directory
+            will be determined by BASE_SAVE_DIRECTORY and the current date.
 
     Returns:
         bool: True if voiceover was generated and saved successfully, False otherwise.
+        str: The actual path where the file was saved, or None if failed.
     """
     if not clientE:
         print("Error: ElevenLabs client is not initialized. Cannot generate voiceover.")
-        return False
+        return False, None
 
     if not script:
         print("Error: No script provided for voiceover generation.")
-        return False
+        return False, None
 
-    if not save_path:
-         print("Error: No save_path provided for voiceover generation.")
-         return False
-
-    print(f"🎤 Generating voiceover for script and attempting to save directly to: {save_path}")
+    if not original_save_path_from_app:
+        print("Error: No original_save_path_from_app provided for voiceover generation.")
+        return False, None
 
     try:
-        # --- CORRECT: Ensure the target directory exists ---
-        # app.py should create the base voiceovers directory, but ensure the specific
-        # directory for this save_path exists just in case (e.g., if subfolders were used)
-        save_dir = os.path.dirname(save_path)
-        os.makedirs(save_dir, exist_ok=True)
-        print(f"Ensured save directory exists: {save_dir}")
+        # --- Determine the final save path ---
+        # 1. Get the current date string (YYYY-MM-DD)
+        current_date_str = datetime.now().strftime("%Y-%m-%d") # This will be "2025-05-13"
 
+        # 2. Create the date-specific directory path
+        date_specific_dir = os.path.join(BASE_SAVE_DIRECTORY, current_date_str)
+
+        # 3. Extract the desired filename from the path provided by app.py
+        target_filename = os.path.basename(original_save_path_from_app)
+        if not target_filename: # Handle cases like "some/dir/"
+            print("Error: Could not extract a valid filename from original_save_path_from_app.")
+            return False, None
+        if not target_filename.lower().endswith(".mp3"): # Ensure it's an mp3
+             target_filename += ".mp3"
+
+
+        # 4. Construct the final full path for saving the audio
+        final_save_path = os.path.join(date_specific_dir, target_filename)
+
+        print(f"🎤 Generating voiceover for script. Target save path: {final_save_path}")
+
+        # --- Ensure the target directory exists ---
+        os.makedirs(date_specific_dir, exist_ok=True)
+        print(f"Ensured save directory exists: {date_specific_dir}")
 
         # Generate audio using Adam's voice
-        # Use the clientE object initialized globally
         audio = clientE.text_to_speech.convert(
             text=script,
             voice_id="pNInz6obpgDQGcFmaJgB",  # Adam voice ID
@@ -80,32 +97,50 @@ def fetch_voiceover(script, save_path):
             output_format="mp3_44100_128" # Recommended format
         )
 
-        # Save the MP3 using the provided save_path
-        # The `save` function from elevenlabs handles writing the audio data
-        save(audio, save_path)
-        print(f"✅ MP3 successfully saved to: {save_path}")
+        # Save the MP3 using the constructed final_save_path
+        save(audio, final_save_path)
+        print(f"✅ MP3 successfully saved to: {final_save_path}")
 
-        return True # Explicitly return True on successful generation and saving
+        return True, final_save_path
 
     except Exception as e:
         print(f"❌ An error occurred during ElevenLabs voiceover generation: {e}")
         # import traceback
         # traceback.print_exc() # Uncomment for detailed error tracing
-        return False # Return False to indicate failure to app.py
+        return False, None
 
 
-# You can add other helper functions or standalone script logic here if needed
-# The main function from your previous script is not needed for integration with Flask
-# as Flask will call fetch_voiceover directly.
+# Example usage (if you were to run this script directly for testing):
+if __name__ == "__main__":
+    print(f"Current Date for folder structure: {datetime.now().strftime('%Y-%m-%d')}")
+    print(f"Base save directory: {BASE_SAVE_DIRECTORY}")
 
-# Example of how you might use play (if needed elsewhere)
-# def play_voiceover(audio_path):
-#     if os.path.exists(audio_path):
-#         try:
-#             play(audio_path)
-#             print(f"Playing audio from {audio_path}")
-#         except Exception as e:
-#             print(f"Error playing audio: {e}")
-#     else:
-#         print(f"Audio file not found for playback: {audio_path}")
+    # Ensure client is initialized for standalone test
+    if clientE:
+        test_script = "Hello, this is a test voiceover generated on May 13th, 2025."
+        # app.py might provide a path like this, or just "test_audio.mp3"
+        test_original_path = "project_x/temp_files/test_audio.mp3"
 
+        success, saved_file_path = fetch_voiceover(test_script, test_original_path)
+
+        if success:
+            print(f"Test voiceover generated and saved to: {saved_file_path}")
+            # You could add playback here if desired for testing
+            # if os.path.exists(saved_file_path):
+            #     try:
+            #         print(f"Attempting to play: {saved_file_path}")
+            #         play(open(saved_file_path, 'rb').read()) # elevenlabs.play takes audio bytes
+            #     except Exception as e:
+            #         print(f"Error playing audio: {e}")
+        else:
+            print("Test voiceover generation failed.")
+
+        # Test with just a filename
+        success_fn, saved_file_path_fn = fetch_voiceover("Another test.", "simple_test.mp3")
+        if success_fn:
+            print(f"Test voiceover (filename only) generated and saved to: {saved_file_path_fn}")
+        else:
+            print("Test voiceover (filename only) generation failed.")
+
+    else:
+        print("Cannot run test: ElevenLabs client not initialized (check API key and path).")
