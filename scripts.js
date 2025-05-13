@@ -393,9 +393,6 @@ document.addEventListener('DOMContentLoaded', function() {
              headers: { 'Content-Type': 'application/json' },
              body: JSON.stringify({
                  unique_id: uniqueID, // Pass the unique ID
-                 script: finalScript, // Pass the script
-                 image_filenames: imageFilenames, // Pass the ordered filenames
-                 voiceover_filename: generatedVoiceoverFilename // Pass the voiceover filename
              })
          });
 

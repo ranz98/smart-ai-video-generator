@@ -5,33 +5,13 @@ import shutil
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 # Assuming voiceoverai.py is in the same directory and has a fetch_voiceover function
+from video_creator import create_videox
+
 from voiceoverai import fetch_voiceover # Ensure this module exists and works
 from openai import OpenAI
 from datetime import date # Import date to get the current date
 
-# --- Import the video processing functions from video_assembly.py ---
-# Make sure video_assembly.py is in the same directory as app.py
-try:
-    from video_assembler import create_video_from_ordered_images, remove_silence, speed_up_audio, get_duration
-    print("Successfully imported video processing functions from video_assembly.py")
-    VIDEO_PROCESSING_AVAILABLE = True
-except ImportError as e:
-    print(f"Error: Could not import video_assembly.py: {e}")
-    print("Video creation functionality will not be available.")
-    # Define dummy functions if import fails to prevent errors later
-    def create_video_from_ordered_images(*args, **kwargs):
-        print("Dummy create_video_from_ordered_images called (video_assembly.py not found)")
-        return False
-    def remove_silence(*args, **kwargs):
-         print("Dummy remove_silence called")
-         return False
-    def speed_up_audio(*args, **kwargs):
-         print("Dummy speed_up_audio called")
-         return False
-    def get_duration(*args, **kwargs):
-         print("Dummy get_duration called")
-         return 0
-    VIDEO_PROCESSING_AVAILABLE = False # Flag to indicate if import failed
+
 
 
 # Set the output directories
@@ -390,103 +370,21 @@ def serve_dated_image(year, month, day, filename):
 @app.route('/create-video', methods=['POST'])
 def create_video_route(): # Renamed function to avoid conflict with imported function
     # Check if video processing functions were imported successfully
-    if not VIDEO_PROCESSING_AVAILABLE:
-         print("Video processing functions not available due to import error.")
-         return jsonify({'success': False, 'message': 'Video processing functions are not available on the server. Check server logs for video_assembly.py import errors.'}), 500
-
-
+    
     data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'message': 'Invalid request: No JSON data received.'}), 400
+
     unique_id = data.get('unique_id')
+    if not unique_id:
+        return jsonify({'success': False, 'message': 'Invalid request: Missing unique_id.'}), 400
+    
     # script = data.get('script') # Script might not be needed for video creation itself, but useful for logging/debugging
-    image_filenames = data.get('image_filenames', []) # Ordered list of filenames (e.g., ['Gen12345_abcde_1', 'Gen12345_fghij_2'])
-    voiceover_filename = data.get('voiceover_filename') # e.g., 'Gen12345_klmno.mp3'
-
-    if not all([unique_id, image_filenames, voiceover_filename]):
-        return jsonify({'success': False, 'message': 'Missing required parameters (unique_id, image_filenames, voiceover_filename)'}), 400
-
-    if not isinstance(image_filenames, list) or not image_filenames:
-         return jsonify({'success': False, 'message': 'image_filenames must be a non-empty list'}), 400
-
-    # Get the current date to construct the image paths
-    today_str = date.today().strftime("%Y-%m-%d")
-    # Use os.path.join with IMAGE_BASE_DIR which is now relative to script location
-    dated_image_dir = os.path.join(IMAGE_BASE_DIR, today_str) # Base directory for today's images
-
-    # --- Use voiceover_filename directly as provided by frontend ---
-    voiceover_path = os.path.join(VOICEOVER_OUTPUT_DIR, voiceover_filename) # Full path to voiceover file
-
-    # Define paths for temporary processed audio files
-    # Use os.path.splitext to reliably get the base name without extension
-    voiceover_base_name, _ = os.path.splitext(voiceover_filename)
-
-    audio_no_silence_filename = f"{voiceover_base_name}_no_silence.mp3"
-    audio_speed_up_filename = f"{voiceover_base_name}_speedup.mp3"
-    audio_no_silence_path = os.path.join(TEMP_AUDIO_DIR, audio_no_silence_filename)
-    audio_speed_up_path = os.path.join(TEMP_AUDIO_DIR, audio_speed_up_filename)
-
-
-    # Define the output video path
-    output_video_filename = f"shorts_video_{unique_id}.mp4" # Unique output filename
-    output_video_path = os.path.join(VIDEO_OUTPUT_DIR, output_video_filename)
-
-    print(f"Received request to create video: {unique_id}")
-    print(f"Image filenames: {image_filenames}")
-    print(f"Voiceover filename: {voiceover_filename}")
-    print(f"Output video path: {output_video_path}")
-
-
-    # Use a try...finally block to ensure temporary audio files are cleaned up
     try:
-        # 1. Construct full image paths from filenames and verify existence
-        image_paths = []
-        for filename in image_filenames:
-            # Assuming image files are saved with the -0.png suffix by the image API
-            # The filename from frontend is 'UniqueID_randomstring_X'
-            full_image_filename = f"{filename}-0.png" # Append the expected suffix
-            image_path = os.path.join(dated_image_dir, full_image_filename)
-            print(f"Checking for image file: {image_path}") # Added print for debugging
-            if not os.path.exists(image_path):
-                print(f"Image file NOT found at: {image_path}") # Added print for debugging
-                # Decide how to handle: skip the image or fail the video creation?
-                # Failing video creation is safer if frontend expected all images.
-                return jsonify({'success': False, 'message': f'Image file not found: {full_image_filename}'}), 404
-            image_paths.append(image_path)
+        print(f"Processing /create-video request for unique_id: {unique_id}")
 
-        if not image_paths:
-             return jsonify({'success': False, 'message': 'No valid image files found based on provided filenames'}), 400
-
-        # 2. Verify voiceover file exists
-        print(f"Checking for voiceover file: {voiceover_path}") # Added print for debugging
-        if not os.path.exists(voiceover_path):
-            print(f"Voiceover file not found: {voiceover_path}") # Added print for debugging
-            return jsonify({'success': False, 'message': f'Voiceover file not found: {voiceover_filename}'}), 404
-
-        # 3. Process audio (remove silence, speed up) using imported functions
-        # Pass the original voiceover path and the temporary paths
-        print("Starting audio processing...")
-        # Ensure TEMP_AUDIO_DIR exists before saving temp files
-        os.makedirs(TEMP_AUDIO_DIR, exist_ok=True)
-
-        # Call the imported remove_silence function
-        audio_processing_success = remove_silence(voiceover_path, audio_no_silence_path)
-
-        if audio_processing_success:
-             # Call the imported speed_up_audio function if silence removal was successful
-             audio_processing_success = speed_up_audio(audio_no_silence_path, audio_speed_up_path, speed_factor=1.20)
-
-
-        if not audio_processing_success:
-             # If audio processing failed, return error
-             return jsonify({'success': False, 'message': 'Failed to process audio (silence removal or speed up). Check server logs for video_assembly.py errors.'}), 500 # Added details
-
-
-        print("Audio processing complete.")
-
-
-        # 4. Create video from the ORDERED image paths and the PROCESSED audio
-        print("Starting video creation from processed audio and ordered images...")
         # Call the imported create_video_from_ordered_images function
-        video_creation_success = create_video_from_ordered_images(image_paths, audio_speed_up_path, output_video_path)
+        video_creation_success =  create_videox(unique_id, "1.0")
 
 
         if not video_creation_success:
@@ -502,8 +400,8 @@ def create_video_route(): # Renamed function to avoid conflict with imported fun
         return jsonify({
             'success': True,
             'message': 'Video created successfully!',
-            'video_path': output_video_path, # Optional: return server path
-            'video_url': f'/videos/{os.path.basename(output_video_path)}' # URL for frontend to access (use basename)
+            'video_path': "created",
+           # 'video_url': f'/videos/{os.path.basename(output_video_path)}' # URL for frontend to access (use basename)
         })
 
     except Exception as e:
@@ -517,28 +415,7 @@ def create_video_route(): # Renamed function to avoid conflict with imported fun
             'details': str(e)
         }), 500
 
-    finally:
-        # 6. Clean up temporary audio files in a finally block
-        print("Cleaning up temporary audio files...")
-        if os.path.exists(audio_no_silence_path):
-            try:
-                os.remove(audio_no_silence_path)
-                print(f"Deleted temporary file: {audio_no_silence_path}")
-            except Exception as e:
-                print(f"Error cleaning up temp file {audio_no_silence_path}: {e}")
-        if os.path.exists(audio_speed_up_path):
-            try:
-                os.remove(audio_speed_up_path)
-                print(f"Deleted temporary file: {audio_speed_up_path}")
-            except Exception as e:
-                 print(f"Error cleaning up temp file {audio_speed_up_path}: {e}")
-        # Clean up partial video file if creation failed and it exists/is empty
-        if os.path.exists(output_video_path) and (os.path.getsize(output_video_path) == 0 or not video_creation_success):
-             try:
-                 os.remove(output_video_path)
-                 print(f"Cleaned up empty or failed video file: {output_video_path}")
-             except Exception as e:
-                 print(f"Error cleaning up failed video file {output_video_path}: {e}")
+  
 
 
 # --- Route to serve the final video file ---
@@ -576,5 +453,4 @@ if __name__ == '__main__':
 
     # Run the Flask app
     # Make sure your image generation service is running on 127.0.0.1:8888
-    # Make sure FFmpeg is installed and in your system's PATH for video_assembly.py
     app.run(host='0.0.0.0', port=5000, debug=True)
