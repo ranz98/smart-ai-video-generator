@@ -183,9 +183,9 @@ body {
 
 /* Extra large devices (large desktops, 1200px and up) */
 @media (min-width: 1200px) {
-    .image-grid {
-         grid-template-columns: repeat(6, 1fr); /* 6 columns */
-    }
+     .image-grid {
+          grid-template-columns: repeat(6, 1fr); /* 6 columns */
+     }
 }
 
 
@@ -352,117 +352,4 @@ body {
 
 input:checked + .slider {
     background-color: var(--accent-color);
-}
-
-input:checked + .slider:before {
-    transform: translateX(30px);
-}
-
-/* Script section */
-.script-container {
-    background-color: var(--card-dark);
-    border-radius: 8px;
-    padding: 15px;
-    margin-top: 20px;
-    /* max-height: 300px; /* Removed max-height for textarea */
-    overflow-y: visible; /* Allow textarea to grow */
-}
-
-/* Script text (textarea) */
-.script-text {
-    white-space: pre-wrap; /* Maintain whitespace from generated text */
-    font-family: inherit; /* Use body font or specify */
-    line-height: 1.6; /* Improve readability */
-    min-height: 150px; /* Give it some initial height */
-    width: 100%; /* Ensure it fills the container */
-    box-sizing: border-box; /* Include padding/border in size */
-    background-color: transparent; /* Make it transparent over card background */
-    border: none; /* Remove textarea border */
-    color: var(--text-primary); /* Inherit text color */
-    resize: vertical; /* Allow vertical resize */
-}
-
-.script-text:focus {
-    outline: none; /* Remove default focus outline */
-    box-shadow: none; /* Remove Bootstrap focus box-shadow */
-}
-
-/* Adjust column widths for large screens */
-/* It's generally better to do this within media queries if you want responsiveness */
-/* Applying unconditionally might break smaller layouts */
-.col-lg-8 {
-    /* flex: 0 0 80%; */
-    /* max-width: 80%; */
-     /* Revert to Bootstrap defaults or use media query */
-}
-
-.col-lg-4 {
-    /* flex: 0 0 20%; */
-    /* max-width: 20%; */
-     /* Revert to Bootstrap defaults or use media query */
-}
-
-/* If you want the 80/20 split ONLY on large screens and up */
-@media (min-width: 992px) { /* Corresponds to Bootstrap's lg breakpoint */
-    .col-lg-8 {
-        flex: 0 0 66.666667%; /* Bootstrap default col-lg-8 is 66.66% */
-        max-width: 66.666667%;
-        /* If you explicitly want 80% on large screens: */
-        /* flex: 0 0 80%; */
-        /* max-width: 80%; */
-    }
-
-    .col-lg-4 {
-         flex: 0 0 33.333333%; /* Bootstrap default col-lg-4 is 33.33% */
-         max-width: 33.333333%;
-         /* If you explicitly want 20% on large screens: */
-         /* flex: 0 0 20%; */
-         /* max-width: 20%; */
-    }
-}
-
-/* Styling for the "Save Changes" button next to Voiceover button */
-.script-container .d-flex .btn {
-    /* Adds spacing or alignment specific to buttons in this flex container */
-}
-
-/* Style for the regenerate prompt button next to prompt text */
-.prompt-item {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: 10px; /* Space between prompts */
-    background-color: rgba(255, 255, 255, 0.03); /* Slight background for prompt item */
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.prompt-item .prompt-text {
-    flex-grow: 1; /* Allow text to take up space */
-    margin-right: 10px; /* Space between text and button */
-    word-break: break-word; /* Break long words */
-}
-
-.prompt-item .regenerate-prompt {
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 0 5px;
-    transition: color 0.2s ease;
-    flex-shrink: 0; /* Prevent button from shrinking */
-}
-
-.prompt-item .regenerate-prompt:hover {
-    color: var(--text-primary);
-}
-
-.prompt-item .regenerate-prompt:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
-/* Optional: Add a class for hidden elements managed by JS */
-.hidden {
-    display: none !important;
 }

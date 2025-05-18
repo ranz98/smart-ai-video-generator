@@ -6,6 +6,7 @@ import tempfile
 import sys
 from datetime import datetime
 
+# Use a raw string for Windows path or double backslashes
 BASE_OUTPUT_FOLDER = r"D:\Program Files\xampp\htdocs\shorts\output"
 
 # Helper function to extract the sequence number for sorting
@@ -46,6 +47,10 @@ def create_videox(prefix: str, speed_multiplier_str: str = "1.0"):
     Args:
         prefix (str): The prefix that image and MP3 file names must start with.
         speed_multiplier_str (str): A string representing the speed multiplier.
+
+    Returns:
+        str: The full path to the created video file on success.
+        False: If video creation fails due to missing files or FFmpeg errors.
     """
     image_files = []
     mp3_file = None
@@ -55,7 +60,8 @@ def create_videox(prefix: str, speed_multiplier_str: str = "1.0"):
 
     if not os.path.isdir(folder_path):
         print(f"Error: Folder not found at '{folder_path}'. Please ensure it exists or is created.")
-        sys.exit(1)
+        # sys.exit(1) # Avoid sys.exit in library function
+        return False # Indicate failure
 
     try:
         speed_multiplier = float(speed_multiplier_str)
@@ -63,9 +69,11 @@ def create_videox(prefix: str, speed_multiplier_str: str = "1.0"):
             raise ValueError("Speed multiplier must be a positive number.")
     except ValueError as e:
         print(f"Error: Invalid speed multiplier '{speed_multiplier_str}'. {e}")
-        sys.exit(1)
+        # sys.exit(1) # Avoid sys.exit
+        return False # Indicate failure
 
     output_video_name = f"{prefix}_speed{speed_multiplier_str.replace('.', '_')}_output.mp4"
+    output_video_path = os.path.join(folder_path, output_video_name)
 
     print(f"Scanning folder: '{folder_path}' for files starting with prefix '{prefix}'")
     for file_name in os.listdir(folder_path):
@@ -82,21 +90,21 @@ def create_videox(prefix: str, speed_multiplier_str: str = "1.0"):
 
     if not image_files:
         print(f"Error: No images found starting with prefix '{prefix}' in '{folder_path}'.")
-        sys.exit(1)
+        # sys.exit(1) # Avoid sys.exit
+        return False # Indicate failure
 
     if mp3_file is None:
         print(f"Error: No MP3 file found starting with prefix '{prefix}' in '{folder_path}'.")
-        sys.exit(1)
+        # sys.exit(1) # Avoid sys.exit
+        return False # Indicate failure
 
     # Sort images using the custom key to ensure correct numerical sequence
     image_files.sort(key=extract_sequence_key)
 
     print(f"\nFound {len(image_files)} images for prefix '{prefix}' (sorted by sequence number):")
     for img_path in image_files:
-        print(f"  - {os.path.basename(img_path)}")
+        print(f"  - {os.path.basename(img_path)}")
     print(f"Using MP3: '{os.path.basename(mp3_file)}'")
-
-    # ... (rest of your function remains the same) ...
 
     original_mp3_duration = 0.0
     try:
@@ -105,24 +113,28 @@ def create_videox(prefix: str, speed_multiplier_str: str = "1.0"):
         print(f"\nOriginal MP3 duration: {original_mp3_duration:.2f} seconds")
     except ffmpeg.Error as e:
         print(f"Error probing MP3 file: {e.stderr.decode()}")
-        sys.exit(1)
+        # sys.exit(1) # Avoid sys.exit
+        return False # Indicate failure
     except KeyError:
         print("Error: Could not determine MP3 duration. Missing 'duration' in probe output.")
-        sys.exit(1)
+        # sys.exit(1) # Avoid sys.exit
+        return False # Indicate failure
     except Exception as e:
         print(f"An unexpected error occurred while probing MP3: {e}")
-        sys.exit(1)
+        # sys.exit(1) # Avoid sys.exit
+        return False # Indicate failure
+
 
     if original_mp3_duration <= 0:
         print("Error: MP3 duration is zero or negative. Cannot create video.")
-        sys.exit(1)
+        return False # Indicate failure
 
     effective_output_duration = original_mp3_duration / speed_multiplier
     print(f"Target output video duration (sped up/down): {effective_output_duration:.2f} seconds")
 
     images_count = len(image_files)
     image_display_duration = effective_output_duration / images_count
-    
+
     min_single_image_duration = 0.04
     if image_display_duration < min_single_image_duration:
         print(f"Warning: Calculated image display duration is very low ({image_display_duration:.4f}s). "
@@ -131,7 +143,6 @@ def create_videox(prefix: str, speed_multiplier_str: str = "1.0"):
 
     print(f"Each image will be displayed for {image_display_duration:.4f} seconds (before speed filter applied by FFmpeg).")
 
-    output_video_path = os.path.join(folder_path, output_video_name)
     temp_list_file_path = None
 
     try:
@@ -140,8 +151,10 @@ def create_videox(prefix: str, speed_multiplier_str: str = "1.0"):
             for img_path in image_files:
                 temp_list_file.write(f"file '{img_path.replace(os.sep, '/')}'\n")
                 temp_list_file.write(f"duration {image_display_duration}\n")
+            # Add the last image again without duration to ensure the last frame is included for the remainder of the duration
             temp_list_file.write(f"file '{image_files[-1].replace(os.sep, '/')}'\n")
-        
+
+
         print(f"\nCreated temporary image list file: {temp_list_file_path}")
 
         image_input_stream = ffmpeg.input(temp_list_file_path, format='concat', safe=0)
@@ -149,70 +162,88 @@ def create_videox(prefix: str, speed_multiplier_str: str = "1.0"):
 
         video_stream = image_input_stream.video.setpts(f'1/{speed_multiplier}*PTS')
 
+        # Apply atempo filters iteratively to handle speed multipliers outside [0.5, 2.0] range
         audio_stream = audio_input_stream.audio
         current_speed_factor = speed_multiplier
-        
+
         while current_speed_factor > 2.0:
             audio_stream = audio_stream.filter('atempo', 2.0)
             current_speed_factor /= 2.0
         while current_speed_factor < 0.5:
             audio_stream = audio_stream.filter('atempo', 0.5)
             current_speed_factor /= 0.5
-        
+
         if current_speed_factor != 1.0:
             audio_stream = audio_stream.filter('atempo', current_speed_factor)
+
 
         (
             ffmpeg
             .output(video_stream, audio_stream, output_video_path,
                     vcodec='libx264',
                     acodec='aac',
-                    pix_fmt='yuv420p',
-                    t=effective_output_duration,
-                    r=30
+                    pix_fmt='yuv420p', # Standard pixel format for broad compatibility
+                    t=effective_output_duration, # Set the output duration based on the sped-up audio
+                    r=30 # Set frame rate (e.g., 30 fps)
                     )
             .run(capture_stdout=True, capture_stderr=True, overwrite_output=True)
         )
         print(f"\nSuccessfully created video: {output_video_path}")
-        return True
-    
+        return output_video_path # Return the path on success
+
     except ffmpeg.Error as e:
         print(f"\nFFmpeg error during video creation:")
         print(f"Stdout: {e.stdout.decode()}")
         print(f"Stderr: {e.stderr.decode()}")
-        sys.exit(1)
+        # sys.exit(1) # Avoid sys.exit
+        return False # Indicate failure
     except Exception as e:
         print(f"\nAn unexpected error occurred: {e}")
-        sys.exit(1)
+        # sys.exit(1) # Avoid sys.exit
+        return False # Indicate failure
     finally:
         if temp_list_file_path and os.path.exists(temp_list_file_path):
             os.remove(temp_list_file_path)
             print(f"\nCleaned up temporary file: {temp_list_file_path}")
 
-# Main execution block
+
+# Main execution block for testing (will not run when imported)
 if __name__ == "__main__":
-    example_prefix = "Gen22972" # Using your example prefix
-    example_speed = "1.0" 
+    # Example usage (replace with actual prefix and speed)
+    # Make sure you have a dated folder inside BASE_OUTPUT_FOLDER
+    # and place images like 'Gen12345_abc_1-0.png', 'Gen12345_def_2-0.png', ...
+    # and an audio file like 'Gen12345_audio.mp3' in that dated folder.
+    # Ensure FFmpeg is installed and in your system PATH.
+    # Example: python video_creator.py Gen12345 1.0
 
-    # Example: Create dummy files in a dated folder for testing
-    # today_date_str = datetime.now().strftime("%Y-%m-%d")
-    # test_folder = os.path.join(BASE_OUTPUT_FOLDER, today_date_str)
-    # os.makedirs(test_folder, exist_ok=True)
-    # dummy_files_to_create = [
-    #     f"{example_prefix}_21teo6_1-0.png",
-    #     f"{example_prefix}_10p7j4_2-0.png", # This should come after _1-0
-    #     f"{example_prefix}_l25sqx_3-0.png",
-    #     f"{example_prefix}_1l4rfj_4-0.png",
-    #     f"{example_prefix}_another_image.png", # This might be sorted last by sequence key
-    #     f"{example_prefix}_audio.mp3"
-    # ]
-    # for fname in dummy_files_to_create:
-    #     with open(os.path.join(test_folder, fname), 'w') as f:
-    #         if fname.endswith(".mp3"):
-    #             f.write("dummy mp3 content") # Needs a real mp3 for ffmpeg probe
-    #         else:
-    #             f.write("dummy image content") # Needs real images for ffmpeg
-    # print(f"Created dummy files in {test_folder} for testing. Replace with actual files.")
-    # print("NOTE: FFmpeg will likely fail with dummy image/audio files. Use real media.")
+    if len(sys.argv) > 2:
+        example_prefix = sys.argv[1]
+        example_speed = sys.argv[2]
+        print(f"Running video_creator.py with prefix: {example_prefix}, speed: {example_speed}")
+        created_video_path = create_videox(example_prefix, example_speed)
 
+        if created_video_path:
+            print(f"\nVideo creation successful. Output file: {created_video_path}")
+        else:
+            print("\nVideo creation failed.")
 
+    else:
+        print("Usage: python video_creator.py <prefix> <speed_multiplier>")
+        print("Example: python video_creator.py Gen12345 1.2")
+        # Optional: uncomment below to create dummy files for basic structure testing (FFmpeg will still fail without real media)
+        # print("\nCreating dummy files for example test...")
+        # example_prefix = "Gen99999"
+        # today_date_str = datetime.now().strftime("%Y-%m-%d")
+        # test_folder = os.path.join(BASE_OUTPUT_FOLDER, today_date_str)
+        # os.makedirs(test_folder, exist_ok=True)
+        # dummy_files_to_create = [
+        #     f"{example_prefix}_abc_1-0.png",
+        #     f"{example_prefix}_def_2-0.png",
+        #     f"{example_prefix}_ghi_3-0.png",
+        #     f"{example_prefix}_audio.mp3"
+        # ]
+        # for fname in dummy_files_to_create:
+        #     with open(os.path.join(test_folder, fname), 'w') as f:
+        #          f.write("dummy content")
+        # print(f"Created dummy files in {test_folder}. NOTE: FFmpeg will likely fail with dummy content.")
+        # print("\nRun with real files using: python video_creator.py Gen99999 1.0")Video creation response

@@ -5,14 +5,11 @@ import shutil
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 # Assuming voiceoverai.py is in the same directory and has a fetch_voiceover function
-from video_creator import create_videox
-
+from video_creator import create_videox # Should now return the file path
 from voiceoverai import fetch_voiceover # Ensure this module exists and works
+from capcutapii import *
 from openai import OpenAI
 from datetime import date # Import date to get the current date
-
-
-
 
 # Set the output directories
 # Make these directories relative to the script's location
@@ -21,18 +18,44 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Frontend expects images from /shorts/output/YYYY-MM-DD/
 # Assuming app.py is in the 'shorts' directory and 'output' is directly inside 'shorts'
 # The base directory for images should be <SCRIPT_DIR>/output
-IMAGE_BASE_DIR = os.path.join(SCRIPT_DIR, "output") # Corrected path construction
+# NOTE: If your BASE_OUTPUT_FOLDER in video_creator.py is different
+# like D:\Program Files\xampp\htdocs\shorts\output,
+# ensure this path is consistent or handle it appropriately.
+# For serving purposes, Flask should serve from the directory where the files are saved.
+# The serving route /shorts/output/... needs to map to that directory.
+# Let's assume for serving, we map the URL structure to the actual save location.
+# The BASE_OUTPUT_FOLDER in video_creator determines where files are saved.
+# We need to ensure the serve_dated_image route points to the correct base.
+# Let's align the serving base with the saving base for simplicity.
 
+# Use the same base path as video_creator for image serving consistency
+# This assumes your Flask app has access to this path.
+IMAGE_BASE_DIR_SERVE = r"D:\Program Files\xampp\htdocs\shorts\output" # Must match BASE_OUTPUT_FOLDER in video_creator.py
+
+# Voiceovers are saved locally relative to app.py, but not served directly by filename
 VOICEOVER_OUTPUT_DIR = os.path.join(SCRIPT_DIR, "voiceovers") # Directory for voiceover files
-VIDEO_OUTPUT_DIR = os.path.join(SCRIPT_DIR, "videos") # Directory for final video files
-TEMP_AUDIO_DIR = os.path.join(SCRIPT_DIR, "temp_audio") # Directory for temporary audio files (silence removed, speed up)
+
+# Videos are saved by video_creator.py in the IMAGE_BASE_DIR_SERVE dated folder
+# but the Flask app needs to know where to serve them *from*.
+# Let's assume for serving videos, we will also look in the dated folders within IMAGE_BASE_DIR_SERVE.
+# So the serve_video route needs adjustment to look in the dated folder.
+# Or, video_creator saves videos to a dedicated VIDEO_OUTPUT_DIR relative to app.py
+# Let's revisit the app.py video serving logic based on where video_creator saves.
+# Based on video_creator.py, videos are saved in the dated folder inside BASE_OUTPUT_FOLDER.
+# So the /videos route should look in that dated folder.
+
+# Directory for final video files (where video_creator saves them)
+# This should match where video_creator saves, which is BASE_OUTPUT_FOLDER / YYYY-MM-DD
+# Let's define a base serve path for videos, pointing to the same place images are saved.
+VIDEO_SERVE_BASE_DIR = r"D:\Program Files\xampp\htdocs\shorts\output" # Must match BASE_OUTPUT_FOLDER in video_creator.py
 
 
-# Ensure output directories exist
-os.makedirs(IMAGE_BASE_DIR, exist_ok=True)
+# Ensure output directories exist (relative to app.py)
+# Note: Directories for images and videos saved by video_creator.py will be created by that script
 os.makedirs(VOICEOVER_OUTPUT_DIR, exist_ok=True)
-os.makedirs(VIDEO_OUTPUT_DIR, exist_ok=True)
-os.makedirs(TEMP_AUDIO_DIR, exist_ok=True)
+# We don't need to create IMAGE_BASE_DIR_SERVE or VIDEO_SERVE_BASE_DIR here
+# as video_creator.py handles creating the dated subfolders.
+# Also, attempting to create D:\... might require elevated permissions depending on system.
 
 
 app = Flask(__name__)
@@ -50,7 +73,7 @@ try:
     with open(api_key_path, 'r') as file:
         api_key = file.read().strip()
     if not api_key:
-         raise ValueError("DeepSeek API key not found in file")
+        raise ValueError("DeepSeek API key not found in file")
     client = OpenAI(
         api_key=api_key,
         base_url="https://api.deepseek.com"
@@ -123,12 +146,12 @@ def extract_json_array(text):
                 pass
     # Fallback: try splitting by lines if JSON fails
     if isinstance(text, str):
-         lines = [line.strip() for line in text.split('\n') if line.strip()]
-         if lines:
-              # Attempt to clean up common list prefixes like numbers or bullet points
-              cleaned_lines = [re.sub(r'^\d+\.\s*', '', line) for line in lines] # Remove numbered list prefix
-              cleaned_lines = [re.sub(r'^[\-\*\+]\s*', '', line) for line in cleaned_lines] # Remove bullet points
-              return [line.strip() for line in cleaned_lines if line.strip()] # Return cleaned non-empty lines
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        if lines:
+            # Attempt to clean up common list prefixes like numbers or bullet points
+            cleaned_lines = [re.sub(r'^\d+\.\s*', '', line) for line in lines] # Remove numbered list prefix
+            cleaned_lines = [re.sub(r'^[\-\*\+]\s*', '', line) for line in cleaned_lines] # Remove bullet points
+            return [line.strip() for line in cleaned_lines if line.strip()] # Return cleaned non-empty lines
 
     return None # Return None if extraction fails
 
@@ -147,23 +170,23 @@ def generate_prompts():
     try:
         num_prompts_int = int(num_prompts)
         if num_prompts_int <= 0:
-             return jsonify({'error': 'num_prompts must be a positive integer'}), 400
+            return jsonify({'error': 'num_prompts must be a positive integer'}), 400
     except ValueError:
         return jsonify({'error': 'Invalid num_prompts value'}), 400
 
 
     if DEMO_MODE == 1:
-         print(f"Demo Mode: Generating {num_prompts_int} image prompts about: {topic}")
-         prompts = [
-             "A breathtaking view of Niagara Falls from the Canadian side with rainbow in the mist",
-             "Angel Falls in Venezuela cascading down the tabletop mountain",
-             "Iguazu Falls with its hundreds of cascades surrounded by lush rainforest",
-             "Victoria Falls with its massive curtain of water creating a permanent rainbow",
-             "Plitvice Lakes waterfalls in Croatia with their turquoise waters and lush surroundings"
-         ][:num_prompts_int] # Slice demo data to match requested quantity
+        print(f"Demo Mode: Generating {num_prompts_int} image prompts about: {topic}")
+        prompts = [
+            "A breathtaking view of Niagara Falls from the Canadian side with rainbow in the mist",
+            "Angel Falls in Venezuela cascading down the tabletop mountain",
+            "Iguazu Falls with its hundreds of cascades surrounded by lush rainforest",
+            "Victoria Falls with its massive curtain of water creating a permanent rainbow",
+            "Plitvice Lakes waterfalls in Croatia with their turquoise waters and lush surroundings"
+        ][:num_prompts_int] # Slice demo data to match requested quantity
     else:
         if not client:
-             return jsonify({'error': 'AI client not available for real generation'}), 500
+            return jsonify({'error': 'AI client not available for real generation'}), 500
         try:
             print(f"Generating {num_prompts_int} image prompts about: {topic}")
             # Instruct AI to generate the exact number of prompts
@@ -177,29 +200,29 @@ def generate_prompts():
 
             # Robust check: Ensure prompts is a list and has the expected number of items
             if not isinstance(prompts, list) or len(prompts) != num_prompts_int:
-                 print(f"Warning: Generated prompts format incorrect or count mismatch. Expected {num_prompts_int}, got {len(prompts) if isinstance(prompts, list) else 'non-list'}.")
-                 # Attempt fallback extraction if initial JSON parsing failed but response is string
-                 if isinstance(response, str):
-                      fallback_prompts = extract_json_array(response) # extract_json_array has fallback logic
-                      if isinstance(fallback_prompts, list) and len(fallback_prompts) >= num_prompts_int:
-                           prompts = fallback_prompts[:num_prompts_int]
-                           print(f"Using fallback extraction, successfully got {len(prompts)} prompts.")
-                      elif isinstance(fallback_prompts, list) and len(fallback_prompts) > 0:
-                           prompts = fallback_prompts
-                           print(f"Using fallback extraction, got {len(prompts)} prompts (less than requested).")
-                      else:
-                           prompts = [] # Fallback failed too
+                print(f"Warning: Generated prompts format incorrect or count mismatch. Expected {num_prompts_int}, got {len(prompts) if isinstance(prompts, list) else 'non-list'}.")
+                # Attempt fallback extraction if initial JSON parsing failed but response is string
+                if isinstance(response, str):
+                    fallback_prompts = extract_json_array(response) # extract_json_array has fallback logic
+                    if isinstance(fallback_prompts, list) and len(fallback_prompts) >= num_prompts_int:
+                        prompts = fallback_prompts[:num_prompts_int]
+                        print(f"Using fallback extraction, successfully got {len(prompts)} prompts.")
+                    elif isinstance(fallback_prompts, list) and len(fallback_prompts) > 0:
+                        prompts = fallback_prompts
+                        print(f"Using fallback extraction, got {len(prompts)} prompts (less than requested).")
+                    else:
+                        prompts = [] # Fallback failed too
 
 
             if not prompts or len(prompts) == 0:
-                 # If after all attempts, we have no prompts, raise error
-                 raise ValueError("Failed to generate valid prompts.")
+                # If after all attempts, we have no prompts, raise error
+                raise ValueError("Failed to generate valid prompts.")
 
             # Ensure the returned list has the exact requested number, even if fallback got more
             # If fallback got less, we return what we got, but log a warning.
             if len(prompts) != num_prompts_int:
-                 print(f"Warning: Final prompt count ({len(prompts)}) does not match requested count ({num_prompts_int}).")
-                 # Decide if this should be an error or just a warning. Let's allow partial results for now.
+                print(f"Warning: Final prompt count ({len(prompts)}) does not match requested count ({num_prompts_int}).")
+                # Decide if this should be an error or just a warning. Let's allow partial results for now.
 
 
         except Exception as e:
@@ -215,6 +238,44 @@ def generate_prompts():
 
 @app.route('/generate-voiceover', methods=['POST'])
 def generate_voiceover():
+    """
+    API endpoint to trigger CapCut Text-to-Speech automation.
+    Expects JSON body with 'script' field.
+    """
+    data = request.get_json()
+    print("dataaa",data)
+
+    if not data or 'script' not in data:
+        return jsonify({"status": "error", "message": "Missing 'script' in request body"}), 400
+
+    script = data['script']
+    savename = data['save_name']
+
+    # You might want to pass email/password from the request body in a real API,
+    # but for this example, we'll use the configured constants.
+    # email = data.get('email', CAPCUT_EMAIL)
+    # password = data.get('password', CAPCUT_PASSWORD)
+
+    print(f"Received request to generate voiceover for script: '{script}'")
+
+    try:
+        # Call the Playwright automation function
+        # The function returns a dictionary including status, message, and download_path
+        result = run_capcut_tts_automation(script,savename)
+
+        # Return the result from the automation function as a JSON response
+        # The automation function already formats the result dictionary appropriately
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"API Error: Automation failed: {e}")
+        # Return a formatted error response if the automation fails
+        return jsonify({"status": "error", "message": f"Automation failed: {str(e)}"}), 500
+
+
+
+@app.route('/generate-voiceoverold', methods=['POST'])
+def generate_voiceoverold():
     data = request.get_json()
     script = data.get('script', '')
     # voice_type = data.get('voice_type', '1') # Assuming this is not used in fetch_voiceover yet
@@ -258,17 +319,17 @@ def generate_voiceover():
 
             if not success:
                 # Assuming fetch_voiceover returns False or None on failure
-                 raise RuntimeError("fetch_voiceover function reported failure")
+                raise RuntimeError("fetch_voiceover function reported failure")
 
             message = "Voiceover generated successfully"
             success = True
 
         except ImportError:
-             print("voiceoverai module not found. Cannot generate real voiceover.")
-             return jsonify({
-                 'error': 'Voiceover module not available',
-                 'details': 'The voiceoverai.py module could not be imported.'
-             }), 500
+            print("voiceoverai module not found. Cannot generate real voiceover.")
+            return jsonify({
+                'error': 'Voiceover module not available',
+                'details': 'The voiceoverai.py module could not be imported.'
+            }), 500
         except Exception as e:
             print(f"Error generating voiceover: {str(e)}")
             return jsonify({
@@ -313,20 +374,20 @@ Liked these facts? Hit that like button and follow for more mind-blowing content
 
     else:
         if not client:
-             return jsonify({'error': 'AI client not available for real generation'}), 500
+            return jsonify({'error': 'AI client not available for real generation'}), 500
         try:
             print(f"Real Mode: Generating script about: {topic}")
             prompt = f"Create a script about: {topic}"
             script = ai_generate(prompt, SCRIPT_GENERATION_SYSTEM)
 
             if not script or len(script.strip()) < 50: # Increased minimum length for a useful script
-                 raise ValueError("Script generation failed or resulted in a very short script")
+                raise ValueError("Script generation failed or resulted in a very short script")
 
             # Optional: Basic cleanup of potential unwanted characters or markdown
             script = script.strip()
             # Remove potential leading/trailing quotes if the AI sometimes wraps the output
             if script.startswith('"') and script.endswith('"'):
-                 script = script[1:-1]
+                script = script[1:-1]
 
 
         except Exception as e:
@@ -341,12 +402,12 @@ Liked these facts? Hit that like button and follow for more mind-blowing content
 
 # --- Route to serve images from the dated output folder ---
 # The JS expects http://localhost//shorts//output//${dateString}//${filename}-0.png
-# This route maps /shorts/output/YYYY-MM-DD/filename.png to the actual file path
+# This route maps /shorts/output/YYYY-MM-DD/filename to the actual file path
 @app.route('/shorts/output/<year>/<month>/<day>/<filename>')
 def serve_dated_image(year, month, day, filename):
     # Construct the full directory path for the specific date
-    # Use os.path.join with IMAGE_BASE_DIR which is now relative to script location
-    dated_image_dir = os.path.join(IMAGE_BASE_DIR, f"{year}-{month}-{day}")
+    # Use os.path.join with IMAGE_BASE_DIR_SERVE which points to the base output folder
+    dated_image_dir = os.path.join(IMAGE_BASE_DIR_SERVE, f"{year}-{month}-{day}")
     # Ensure the directory exists and the filename is safe
     # Add check for the specific file path as well
     file_path = os.path.join(dated_image_dir, filename)
@@ -362,15 +423,14 @@ def serve_dated_image(year, month, day, filename):
         print(f"send_from_directory could not find file: {file_path}")
         return "File not found", 404
     except Exception as e:
-         print(f"Error serving image: {e}")
-         return "Internal Server Error", 500
+        print(f"Error serving image: {e}")
+        return "Internal Server Error", 500
 
 
 # --- NEW: Route to create the video ---
 @app.route('/create-video', methods=['POST'])
 def create_video_route(): # Renamed function to avoid conflict with imported function
-    # Check if video processing functions were imported successfully
-    
+
     data = request.get_json()
     if not data:
         return jsonify({'success': False, 'message': 'Invalid request: No JSON data received.'}), 400
@@ -378,30 +438,46 @@ def create_video_route(): # Renamed function to avoid conflict with imported fun
     unique_id = data.get('unique_id')
     if not unique_id:
         return jsonify({'success': False, 'message': 'Invalid request: Missing unique_id.'}), 400
-    
-    # script = data.get('script') # Script might not be needed for video creation itself, but useful for logging/debugging
+
+    # The speed multiplier is hardcoded to "1.0" in the create_videox call for now.
+    # If you want to make it dynamic based on frontend input,
+    # you would need to add a parameter to the /create-video request.
+    # For now, we assume 1.0 or update create_videox default.
+    # speed_multiplier = data.get('speed_multiplier', '1.0') # Example if dynamic
+
+
     try:
         print(f"Processing /create-video request for unique_id: {unique_id}")
 
-        # Call the imported create_video_from_ordered_images function
-        video_creation_success =  create_videox(unique_id, "1.0")
+        # Call the imported create_videox function - now it returns the path or False
+        output_video_path = create_videox(unique_id, "1.0") # Hardcoded speed for now
+
+        if output_video_path is False:
+            # If video creation failed, return error
+            print("video_creator.py reported failure.")
+            return jsonify({'success': False, 'message': 'Failed to combine images and audio into video. Check server logs for video_assembly.py errors or FFmpeg issues.'}), 500
+
+        print(f"Video creation complete. File path: {output_video_path}")
+
+        # 5. Return success response with the video URL
+        video_filename = os.path.basename(output_video_path)
+        # Construct the URL to serve the video.
+        # The /videos route needs to be updated to handle dated folders if that's where videos are saved.
+        # Based on video_creator.py saving to BASE_OUTPUT_FOLDER/YYYY-MM-DD/
+        # the /videos route should also look in that dated folder.
+        # Let's build the URL that the frontend can use to request the file from the updated /videos route.
+        # The /videos route will need to look in the dated folder.
+        # So the URL should probably also include the date.
+        # e.g., /videos/YYYY-MM-DD/filename.mp4
+        today_str = date.today().strftime("%Y-%m-%d")
+        video_url = f'/videos/{today_str}/{video_filename}' # Construct URL including date
 
 
-        if not video_creation_success:
-             # If video creation failed, return error
-             # The create_video_from_ordered_images function should print details
-             return jsonify({'success': False, 'message': 'Failed to combine images and audio into video. Check server logs for video_assembly.py errors or FFmpeg issues.'}), 500 # Added details
-
-
-        print("Video creation complete.")
-
-        # 5. Return success response
-        # Return a URL where the video can be accessed via the /videos route
         return jsonify({
             'success': True,
             'message': 'Video created successfully!',
-            'video_path': "created",
-           # 'video_url': f'/videos/{os.path.basename(output_video_path)}' # URL for frontend to access (use basename)
+            'video_filename': video_filename, # Return the filename
+           # 'video_url': video_url # Return the URL for the frontend
         })
 
     except Exception as e:
@@ -415,42 +491,24 @@ def create_video_route(): # Renamed function to avoid conflict with imported fun
             'details': str(e)
         }), 500
 
-  
-
-
-# --- Route to serve the final video file ---
-# The JS expects http://localhost/videos/filename.mp4 (example URL)
-@app.route('/videos/<filename>')
-def serve_video(filename):
-    # Ensure the directory exists and the filename is safe
-    file_path = os.path.join(VIDEO_OUTPUT_DIR, filename)
-    if not os.path.exists(file_path) or '..' in filename or filename.startswith('/'):
-        print(f"Video file not found or path unsafe: {file_path}")
-        return "File not found", 404
-    print(f"Serving video file: {filename} from {VIDEO_OUTPUT_DIR}")
-    try:
-        # Use safe send_from_directory
-        return send_from_directory(VIDEO_OUTPUT_DIR, filename)
-    except FileNotFoundError:
-        # This should ideally be caught by os.path.exists, but as a fallback
-        print(f"send_from_directory could not find file: {file_path}")
-        return "File not found", 404
-    except Exception as e:
-         print(f"Error serving video: {e}")
-         return "Internal Server Error", 500
 
 
 if __name__ == '__main__':
     # Ensure image output directory has the date subfolder for today
+    # NOTE: video_creator.py creates this when saving images/videos,
+    # but creating it here on app startup ensures it exists early.
     today_str = date.today().strftime("%Y-%m-%d")
-    # Use os.path.join with IMAGE_BASE_DIR which is now relative to script location
-    os.makedirs(os.path.join(IMAGE_BASE_DIR, today_str), exist_ok=True)
-    print(f"Serving images from {os.path.abspath(IMAGE_BASE_DIR)}")
-    print(f"Serving voiceovers from {os.path.abspath(VOICEOVER_OUTPUT_DIR)}")
-    print(f"Serving videos from {os.path.abspath(VIDEO_OUTPUT_DIR)}")
-    print(f"Using temporary audio directory: {os.path.abspath(TEMP_AUDIO_DIR)}")
+    # Use os.path.join with IMAGE_BASE_DIR_SERVE which is the base output folder
+    os.makedirs(os.path.join(IMAGE_BASE_DIR_SERVE, today_str), exist_ok=True)
+    # No need to create VOICEOVER_OUTPUT_DIR here, it's handled above.
+    # No need to create VIDEO_SERVE_BASE_DIR directly.
+
+    print(f"Serving images/videos from base directory: {os.path.abspath(IMAGE_BASE_DIR_SERVE)}")
+    print(f"Saving voiceovers to: {os.path.abspath(VOICEOVER_OUTPUT_DIR)}")
 
 
     # Run the Flask app
     # Make sure your image generation service is running on 127.0.0.1:8888
+    # Make sure FFmpeg is installed and in your system's PATH for video_creator.py
+    # Check that BASE_OUTPUT_FOLDER in video_creator.py matches the serving base paths here.
     app.run(host='0.0.0.0', port=5000, debug=True)

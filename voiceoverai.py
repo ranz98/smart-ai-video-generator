@@ -91,7 +91,7 @@ def fetch_voiceover(script, original_save_path_from_app):
 
         # Generate audio using Adam's voice
         audio = clientE.text_to_speech.convert(
-            text=script,
+            text="hi",
             voice_id="pNInz6obpgDQGcFmaJgB",  # Adam voice ID
             model_id="eleven_multilingual_v2", # Or your preferred model
             output_format="mp3_44100_128" # Recommended format
@@ -115,32 +115,4 @@ if __name__ == "__main__":
     print(f"Current Date for folder structure: {datetime.now().strftime('%Y-%m-%d')}")
     print(f"Base save directory: {BASE_SAVE_DIRECTORY}")
 
-    # Ensure client is initialized for standalone test
-    if clientE:
-        test_script = "Hello, this is a test voiceover generated on May 13th, 2025."
-        # app.py might provide a path like this, or just "test_audio.mp3"
-        test_original_path = "project_x/temp_files/test_audio.mp3"
-
-        success, saved_file_path = fetch_voiceover(test_script, test_original_path)
-
-        if success:
-            print(f"Test voiceover generated and saved to: {saved_file_path}")
-            # You could add playback here if desired for testing
-            # if os.path.exists(saved_file_path):
-            #     try:
-            #         print(f"Attempting to play: {saved_file_path}")
-            #         play(open(saved_file_path, 'rb').read()) # elevenlabs.play takes audio bytes
-            #     except Exception as e:
-            #         print(f"Error playing audio: {e}")
-        else:
-            print("Test voiceover generation failed.")
-
-        # Test with just a filename
-        success_fn, saved_file_path_fn = fetch_voiceover("Another test.", "simple_test.mp3")
-        if success_fn:
-            print(f"Test voiceover (filename only) generated and saved to: {saved_file_path_fn}")
-        else:
-            print("Test voiceover (filename only) generation failed.")
-
-    else:
-        print("Cannot run test: ElevenLabs client not initialized (check API key and path).")
+   

@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Shorts Creator</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 
@@ -52,11 +50,11 @@
                             <button class="btn btn-generate" id="generatePromptsBtn">
                                 <i class="fas fa-bolt me-2"></i> Generate Prompts & Script
                             </button>
-                        
+
                         </div>
                     </div>
 
-                                    <div id="scriptSection" style="display: none;">
+                                        <div id="scriptSection" style="display: none;">
                     <h5 class="text-white mb-3"><i class="fas fa-scroll me-2"></i>Generated Script</h5>
                     <div class="script-container">
                         <textarea class="form-control script-text" id="scriptText" rows="10" placeholder="Generated script will appear here..."></textarea>
@@ -80,7 +78,7 @@
                                 <button class="btn btn-generate" id="generateImagesBtn">
                                     <i class="fas fa-image me-2"></i> Generate All Imagesx
                                 </button>
-                             
+
                             </div>
                         </div>
                     </div>
@@ -97,7 +95,7 @@
                             <button class="btn btn-generate" id="createVideoBtn" style="display: none;">
                                 <i class="fas fa-film me-2"></i> Create YouTube Short
                             </button>
-                           
+
                         </div>
                     </div>
                 </div>
@@ -105,7 +103,7 @@
                 <div class="col-lg-4">
                     <div class="settings-card p-4 mb-4">
                         <h5 class="mb-3"><i class="fas fa-sliders-h me-2"></i>Generation Settings</h5>
-                        
+
                         <div class="mb-3">
                             <label for="styleSelect" class="form-label">Style</label>
                             <select class="form-select" id="styleSelect">
@@ -159,6 +157,17 @@
 
 
                     </div>
+
+                    <div id="videoPreviewSection" class="settings-card p-4 mb-4" style="display: none;">
+                        <h5 class="mb-3"><i class="fas fa-video me-2"></i>Video Preview</h5>
+                        <video id="videoPreviewElement" controls class="w-100"></video>
+                        <div class="mt-3 text-center">
+                            <a href="#" id="downloadVideoLink" class="btn btn-secondary btn-sm" download style="display: none;">
+                                <i class="fas fa-download me-2"></i> Download Video
+                            </a>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -170,10 +179,9 @@
         </div>
     </footer>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="scripts.js"></script>
 
-    
+
 </body>
 </html>
